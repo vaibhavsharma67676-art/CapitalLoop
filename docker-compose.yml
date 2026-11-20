@@ -1,0 +1,22 @@
+services:
+  capitalloop:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: capitalloop
+    restart: unless-stopped
+    ports:
+      - "${PORT:-4000}:4000"
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4000
+      CLIENT_ORIGIN: ${CLIENT_ORIGIN:-https://monopoly.yourdomain.com}
+      TRUST_PROXY: ${TRUST_PROXY:-1}
+      DATA_DIR: /app/data
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - capitalloop_data:/app/data
+
+volumes:
+  capitalloop_data:

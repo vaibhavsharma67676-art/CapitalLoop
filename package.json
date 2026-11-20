@@ -1,0 +1,33 @@
+{
+  "name": "capitalloop-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Private-only multiplayer Monopoly-style board game inspired by Richup.io",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "engines": {
+    "node": ">=18.18.0",
+    "npm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "npm run build:shared && concurrently -n SHARED,SERVER,CLIENT -c cyan,green,magenta \"npm run dev -w @capitalloop/shared\" \"npm run dev -w @capitalloop/server\" \"npm run dev -w @capitalloop/client\"",
+    "build:shared": "npm run build -w @capitalloop/shared",
+    "build:server": "npm run build -w @capitalloop/server",
+    "build:client": "npm run build -w @capitalloop/client",
+    "build": "npm run build:shared && npm run build:server && npm run build:client",
+    "start": "npm run start -w @capitalloop/server",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "npm run typecheck -w @capitalloop/shared && npm run typecheck -w @capitalloop/server && npm run typecheck -w @capitalloop/client"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "concurrently": "^9.0.1",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2",
+    "vitest": "^2.1.1"
+  }
+}

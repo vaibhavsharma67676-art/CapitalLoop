@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+shared/dist/
+server/dist/
+client/dist/
+*.tsbuildinfo
+
+# Runtime room persistence data
+data/
+server/data/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# OS & Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

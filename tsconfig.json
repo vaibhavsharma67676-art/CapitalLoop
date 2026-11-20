@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": {
+      "@capitalloop/shared": ["shared/src/index.ts"],
+      "@capitalloop/shared/*": ["shared/src/*"]
+    }
+  },
+  "include": ["tests/**/*.ts", "vitest.config.ts"],
+  "references": [
+    { "path": "./shared" },
+    { "path": "./server" }
+  ]
+}
