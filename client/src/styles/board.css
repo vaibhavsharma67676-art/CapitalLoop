@@ -1,0 +1,373 @@
+.board-square-wrapper {
+  position: relative;
+  width: min(calc(100vh - 22px), calc(100vw - 600px));
+  height: min(calc(100vh - 22px), calc(100vw - 600px));
+  max-width: 920px;
+  max-height: 920px;
+  min-width: 310px;
+  min-height: 310px;
+  background: var(--bg-board);
+  border: 1px solid var(--border-strong);
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: var(--shadow-panel);
+}
+
+.board-grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: 1.45fr repeat(9, 1fr) 1.45fr;
+  grid-template-rows: 1.45fr repeat(9, 1fr) 1.45fr;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(139, 92, 246, 0.12);
+}
+
+/* Individual Tile Card */
+.board-tile {
+  position: relative;
+  background: var(--bg-tile);
+  border-radius: 6px;
+  overflow: hidden;
+  display: flex;
+  cursor: pointer;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.14s ease, border-color 0.14s ease;
+  user-select: none;
+}
+
+.board-tile:hover {
+  background: var(--bg-tile-hover);
+  border-color: var(--accent);
+  z-index: 4;
+}
+
+.board-tile.mortgaged {
+  opacity: 0.55;
+}
+
+.board-tile.tile-edge-top {
+  flex-direction: column;
+}
+.board-tile.tile-edge-bottom {
+  flex-direction: column-reverse;
+}
+.board-tile.tile-edge-left {
+  flex-direction: row;
+}
+.board-tile.tile-edge-right {
+  flex-direction: row-reverse;
+}
+
+/* Outer Color / Owner / Price Bar (Richup Style) */
+.tile-strip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: clamp(0.5rem, 0.72vw, 0.68rem);
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  flex-shrink: 0;
+}
+
+.tile-edge-top .tile-strip,
+.tile-edge-bottom .tile-strip {
+  width: 100%;
+  height: 24%;
+  min-height: 14px;
+}
+
+.tile-edge-left .tile-strip,
+.tile-edge-right .tile-strip {
+  height: 100%;
+  width: 25%;
+  min-width: 15px;
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+.tile-body {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 2px;
+  text-align: center;
+}
+
+.tile-name {
+  font-size: clamp(0.46rem, 0.65vw, 0.66rem);
+  font-weight: 700;
+  line-height: 1.05;
+  color: var(--text-primary);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tile-emblem {
+  width: clamp(16px, 2.2vw, 24px);
+  height: clamp(16px, 2.2vw, 24px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(0.46rem, 0.64vw, 0.62rem);
+  font-weight: 800;
+  color: #ffffff;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  flex-shrink: 0;
+}
+
+.tile-owner-ribbon {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border: 2px solid transparent;
+  border-radius: 6px;
+}
+
+.tile-mortgaged-tag {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 10, 28, 0.58);
+  color: #fca5a5;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  pointer-events: none;
+}
+
+/* Houses & Hotel Indicators */
+.house-indicators {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+
+.house-pip {
+  width: 6px;
+  height: 6px;
+  border-radius: 2px;
+  background: #4ade80;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.55);
+}
+
+.hotel-pip {
+  padding: 1px 4px;
+  border-radius: 3px;
+  background: #f43f5e;
+  color: #ffffff;
+  font-size: 0.54rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+/* Corner Tiles (START top-left, PRISON top-right, VACATION bottom-right, GO TO PRISON bottom-left) */
+.corner-tile {
+  background: var(--bg-tile);
+  border-radius: 8px;
+  border: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 4px;
+  text-align: center;
+  position: relative;
+}
+
+.corner-label {
+  font-size: clamp(0.55rem, 0.8vw, 0.78rem);
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+}
+
+.corner-sub {
+  font-size: clamp(0.45rem, 0.62vw, 0.62rem);
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.corner-start .corner-label {
+  color: #bef264;
+}
+
+.corner-vacation-pot {
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: #facc15;
+  background: rgba(250, 204, 21, 0.14);
+  padding: 1px 6px;
+  border-radius: 999px;
+}
+
+/* Center Board Canvas (Dice, Primary Action, Live Activity Log) */
+.board-center {
+  grid-column: 2 / 11;
+  grid-row: 2 / 11;
+  background: radial-gradient(circle at 50% 34%, rgba(124, 77, 255, 0.12), transparent 62%), var(--bg-board);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: clamp(8px, 1.8vw, 20px);
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.center-turn-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.8rem;
+}
+
+.turn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-weight: 700;
+}
+
+.timer-pill {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(139, 92, 246, 0.16);
+  color: var(--text-primary);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+.timer-pill.urgent {
+  background: rgba(225, 29, 72, 0.25);
+  color: #fda4af;
+}
+
+.center-dice-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+/* 3D Styled White Dice (Richup Look) */
+.dice-pair {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.die-cube {
+  width: clamp(44px, 5.4vw, 62px);
+  height: clamp(44px, 5.4vw, 62px);
+  border-radius: 12px;
+  background: linear-gradient(145deg, #ffffff 0%, #e5e7eb 100%);
+  box-shadow:
+    inset -3px -4px 8px rgba(0, 0, 0, 0.16),
+    0 10px 22px rgba(0, 0, 0, 0.45);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  padding: 8px;
+  gap: 3px;
+  transform: rotate(-4deg);
+  transition: transform 0.25s ease;
+}
+
+.die-cube:nth-child(2) {
+  transform: rotate(6deg);
+}
+
+.die-cube.rolling {
+  animation: diceShake 0.45s ease-in-out infinite;
+}
+
+@keyframes diceShake {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-16deg) scale(1.08); }
+  50% { transform: rotate(14deg) scale(0.96); }
+  75% { transform: rotate(-10deg) scale(1.06); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+.die-pip {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: #1a1530;
+  align-self: center;
+  justify-self: center;
+  max-width: 10px;
+  max-height: 10px;
+}
+
+.center-action-deck {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.center-log-box {
+  width: 100%;
+  flex: 1;
+  min-height: 60px;
+  max-height: 175px;
+  overflow: hidden;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
+}
+
+/* Smoothly Gliding Player Token Overlay */
+.token-overlay-layer {
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.board-player-token {
+  position: absolute;
+  width: clamp(18px, 2.3vw, 26px);
+  height: clamp(18px, 2.3vw, 26px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #ffffff;
+  color: #120e1e;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
+  transform: translate(-50%, -50%);
+  transition: left 0.42s cubic-bezier(0.22, 1, 0.36, 1), top 0.42s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.board-player-token.active-mover {
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.85), 0 0 18px var(--accent);
+  z-index: 20;
+}
