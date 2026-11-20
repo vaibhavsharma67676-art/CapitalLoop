@@ -1,0 +1,120 @@
+import type { CardDefinition } from '../types/cards';
+
+export const COMMUNITY_CARDS: readonly CardDefinition[] = [
+  {
+    id: 'community-advance-start',
+    deck: 'COMMUNITY',
+    title: 'Capital Stimulus',
+    description: 'Advance to Start and collect your Start pass bonus.',
+    effect: { kind: 'MOVE_TO_TILE', targetTileId: 0, collectStartIfPassed: true },
+  },
+  {
+    id: 'community-bank-error',
+    deck: 'COMMUNITY',
+    title: 'Ledger Correction',
+    description: 'Accounting error in your favor! Collect $200.',
+    effect: { kind: 'GAIN_CASH', amount: 200 },
+  },
+  {
+    id: 'community-stock-sale',
+    deck: 'COMMUNITY',
+    title: 'Private Equity Exit',
+    description: 'From the sale of tech shares, you receive $50.',
+    effect: { kind: 'GAIN_CASH', amount: 50 },
+  },
+  {
+    id: 'community-holiday-fund',
+    deck: 'COMMUNITY',
+    title: 'Reserve Fund Matures',
+    description: 'Your long-term savings vault matures. Collect $100.',
+    effect: { kind: 'GAIN_CASH', amount: 100 },
+  },
+  {
+    id: 'community-tax-refund',
+    deck: 'COMMUNITY',
+    title: 'Tax Rebate',
+    description: 'Overpaid quarterly filings! Collect a $20 refund.',
+    effect: { kind: 'GAIN_CASH', amount: 20 },
+  },
+  {
+    id: 'community-life-insurance',
+    deck: 'COMMUNITY',
+    title: 'Policy Payout',
+    description: 'Investment policy matures. Collect $100.',
+    effect: { kind: 'GAIN_CASH', amount: 100 },
+  },
+  {
+    id: 'community-consultancy',
+    deck: 'COMMUNITY',
+    title: 'Advisory Bonus',
+    description: 'You receive a $25 strategy consultancy fee.',
+    effect: { kind: 'GAIN_CASH', amount: 25 },
+  },
+  {
+    id: 'community-design-award',
+    deck: 'COMMUNITY',
+    title: 'Architecture Prize',
+    description: 'Your skyline project won second place. Collect $10.',
+    effect: { kind: 'GAIN_CASH', amount: 10 },
+  },
+  {
+    id: 'community-inheritance',
+    deck: 'COMMUNITY',
+    title: 'Estate Grant',
+    description: 'You inherit $100 from a family trust.',
+    effect: { kind: 'GAIN_CASH', amount: 100 },
+  },
+  {
+    id: 'community-birthday',
+    deck: 'COMMUNITY',
+    title: 'Milestone Celebration',
+    description: 'It is your birthday! Collect $10 from every other active player.',
+    effect: { kind: 'COLLECT_FROM_ALL', amountPerPlayer: 10 },
+  },
+  {
+    id: 'community-clinic-fee',
+    deck: 'COMMUNITY',
+    title: 'Wellness Checkup',
+    description: 'Private clinic consultation fee. Pay $50.',
+    effect: { kind: 'PAY_CASH', amount: 50 },
+  },
+  {
+    id: 'community-hospital-bill',
+    deck: 'COMMUNITY',
+    title: 'Emergency Medical Bill',
+    description: 'Settle your hospital invoice for $100.',
+    effect: { kind: 'PAY_CASH', amount: 100 },
+  },
+  {
+    id: 'community-tuition-fee',
+    deck: 'COMMUNITY',
+    title: 'Executive Academy Tuition',
+    description: 'Pay $50 for leadership certification fees.',
+    effect: { kind: 'PAY_CASH', amount: 50 },
+  },
+  {
+    id: 'community-street-repairs',
+    deck: 'COMMUNITY',
+    title: 'Civic Street Assessment',
+    description: 'Assessed for sidewalk upgrades: pay $40 per house and $115 per hotel you own.',
+    effect: { kind: 'REPAIRS', perHouse: 40, perHotel: 115 },
+  },
+  {
+    id: 'community-go-to-jail',
+    deck: 'COMMUNITY',
+    title: 'Compliance Detainment',
+    description: 'Go directly to Prison. Do not pass Start and do not collect a Start bonus.',
+    effect: { kind: 'GO_TO_JAIL' },
+  },
+  {
+    id: 'community-jail-free',
+    deck: 'COMMUNITY',
+    title: 'Bail Bond Voucher',
+    description: 'Get Out of Prison Free. Keep this card until needed or trade it with another player.',
+    effect: { kind: 'GET_OUT_OF_JAIL_FREE' },
+  },
+];
+
+export const COMMUNITY_CARD_BY_ID: Record<string, CardDefinition> = Object.fromEntries(
+  COMMUNITY_CARDS.map((card) => [card.id, card]),
+);

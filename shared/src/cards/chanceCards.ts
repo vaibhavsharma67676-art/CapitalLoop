@@ -1,0 +1,120 @@
+import type { CardDefinition } from '../types/cards';
+
+export const CHANCE_CARDS: readonly CardDefinition[] = [
+  {
+    id: 'chance-advance-start',
+    deck: 'CHANCE',
+    title: 'Fast Track to Start',
+    description: 'Advance directly to Start and collect your Start pass bonus.',
+    effect: { kind: 'MOVE_TO_TILE', targetTileId: 0, collectStartIfPassed: true },
+  },
+  {
+    id: 'chance-advance-top-district',
+    deck: 'CHANCE',
+    title: 'VIP Penthouse Invite',
+    description: 'Advance directly to the premier tile (#39) on the board.',
+    effect: { kind: 'MOVE_TO_TILE', targetTileId: 39, collectStartIfPassed: true },
+  },
+  {
+    id: 'chance-advance-red-hub',
+    deck: 'CHANCE',
+    title: 'Red District Summit',
+    description: 'Advance to tile #24. Collect your Start bonus if you pass Start.',
+    effect: { kind: 'MOVE_TO_TILE', targetTileId: 24, collectStartIfPassed: true },
+  },
+  {
+    id: 'chance-advance-pink-avenue',
+    deck: 'CHANCE',
+    title: 'Boutique Grand Opening',
+    description: 'Advance to tile #11. Collect your Start bonus if you pass Start.',
+    effect: { kind: 'MOVE_TO_TILE', targetTileId: 11, collectStartIfPassed: true },
+  },
+  {
+    id: 'chance-advance-first-transit',
+    deck: 'CHANCE',
+    title: 'Express Boarding Pass',
+    description: 'Fly to the first Transit Hub (tile #5). Collect Start bonus if you pass Start.',
+    effect: { kind: 'MOVE_TO_TILE', targetTileId: 5, collectStartIfPassed: true },
+  },
+  {
+    id: 'chance-nearest-transit-1',
+    deck: 'CHANCE',
+    title: 'Priority Flight Upgrade',
+    description: 'Advance to the nearest Transit Hub. If owned, pay 2x the standard transit rent.',
+    effect: { kind: 'MOVE_NEAREST_TRANSIT', rentMultiplier: 2 },
+  },
+  {
+    id: 'chance-nearest-transit-2',
+    deck: 'CHANCE',
+    title: 'Charter Jet Reroute',
+    description: 'Advance to the nearest Transit Hub. If owned, pay 2x the standard transit rent.',
+    effect: { kind: 'MOVE_NEAREST_TRANSIT', rentMultiplier: 2 },
+  },
+  {
+    id: 'chance-nearest-utility',
+    deck: 'CHANCE',
+    title: 'Infrastructure Audit',
+    description: 'Advance to the nearest Utility. If owned, pay 10x your dice roll.',
+    effect: { kind: 'MOVE_NEAREST_UTILITY', diceMultiplier: 10 },
+  },
+  {
+    id: 'chance-go-back-3',
+    deck: 'CHANCE',
+    title: 'Detour Ahead',
+    description: 'Traffic jam! Move backward 3 spaces.',
+    effect: { kind: 'MOVE_RELATIVE', steps: -3 },
+  },
+  {
+    id: 'chance-bank-dividend',
+    deck: 'CHANCE',
+    title: 'Quarterly Dividend',
+    description: 'The central bank pays you a dividend of $50.',
+    effect: { kind: 'GAIN_CASH', amount: 50 },
+  },
+  {
+    id: 'chance-loan-matures',
+    deck: 'CHANCE',
+    title: 'Bond Maturity',
+    description: 'Your municipal building bond matures. Collect $150.',
+    effect: { kind: 'GAIN_CASH', amount: 150 },
+  },
+  {
+    id: 'chance-speeding-fine',
+    deck: 'CHANCE',
+    title: 'Speeding Citation',
+    description: 'Caught speeding down the boulevard. Pay a $15 fine.',
+    effect: { kind: 'PAY_CASH', amount: 15 },
+  },
+  {
+    id: 'chance-general-repairs',
+    deck: 'CHANCE',
+    title: 'Property Renovation Mandate',
+    description: 'Upgrade your portfolio: pay $25 per house and $100 per hotel you own.',
+    effect: { kind: 'REPAIRS', perHouse: 25, perHotel: 100 },
+  },
+  {
+    id: 'chance-board-chair',
+    deck: 'CHANCE',
+    title: 'Elected Council Chair',
+    description: 'Celebrate your appointment by paying $50 to every other active player.',
+    effect: { kind: 'PAY_ALL_PLAYERS', amountPerPlayer: 50 },
+  },
+  {
+    id: 'chance-go-to-jail',
+    deck: 'CHANCE',
+    title: 'Regulatory Freeze',
+    description: 'Go directly to Prison. Do not pass Start and do not collect a Start bonus.',
+    effect: { kind: 'GO_TO_JAIL' },
+  },
+  {
+    id: 'chance-jail-free',
+    deck: 'CHANCE',
+    title: 'Executive Pardon',
+    description: 'Get Out of Prison Free. Keep this card until needed or trade it with another player.',
+    effect: { kind: 'GET_OUT_OF_JAIL_FREE' },
+  },
+];
+
+export const CHANCE_CARD_BY_ID: Record<string, CardDefinition> = Object.fromEntries(
+  CHANCE_CARDS.map((card) => [card.id, card]),
+);
