@@ -1,22 +1,29 @@
-/* Tablet & Smaller Desktop */
-@media (max-width: 1120px) {
+html,
+body,
+#root {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+/* Tablet & Compact Desktop */
+@media (max-width: 1140px) {
   .lobby-grid {
     grid-template-columns: 1fr 1fr;
   }
 
   .game-shell {
-    grid-template-columns: 220px minmax(0, 1fr) 240px;
+    grid-template-columns: 220px minmax(0, 1fr) 244px;
     gap: 8px;
     padding: 8px;
   }
 
   .board-square-wrapper {
-    width: min(calc(100vh - 18px), calc(100vw - 486px));
-    height: min(calc(100vh - 18px), calc(100vw - 486px));
+    width: min(calc(100vh - 18px), calc(100vw - 492px));
+    height: min(calc(100vh - 18px), calc(100vw - 492px));
   }
 }
 
-/* Mobile Portrait */
+/* Mobile Portrait (Android & iPhone) */
 @media (max-width: 860px) {
   .lobby-grid {
     grid-template-columns: 1fr;
@@ -34,9 +41,35 @@
     display: flex;
     flex-direction: column;
     height: 100dvh;
-    padding: 6px 6px 62px;
+    width: 100vw;
+    max-width: 100vw;
+    padding: 6px 6px 60px;
     gap: 6px;
     overflow: hidden;
+  }
+
+  /* Compact Mobile Top HUD Bar */
+  .mobile-top-hud {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 10px;
+    flex-shrink: 0;
+  }
+
+  .mobile-hud-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .mobile-hud-actions {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    flex-shrink: 0;
   }
 
   .game-rail.mobile-hidden {
@@ -47,6 +80,7 @@
     display: flex;
     flex: 1;
     min-height: 0;
+    width: 100%;
   }
 
   .game-board-stage.mobile-hidden {
@@ -56,18 +90,108 @@
   .game-board-stage {
     flex: 1;
     width: 100%;
+    min-height: 0;
     padding: 0;
+    overflow: hidden;
+  }
+
+  /* Contained zoom/pan viewport — never causes page-level horizontal overflow */
+  .board-zoom-viewport {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .board-zoom-viewport.zoomed {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    align-items: flex-start;
+    justify-content: flex-start;
+    padding: 2px;
   }
 
   .board-square-wrapper {
-    width: min(calc(100vw - 12px), calc(100dvh - 80px));
-    height: min(calc(100vw - 12px), calc(100dvh - 80px));
-    min-width: 290px;
-    min-height: 290px;
+    width: min(calc(100vw - 12px), calc(100dvh - 182px));
+    height: min(calc(100vw - 12px), calc(100dvh - 182px));
+    min-width: 280px;
+    min-height: 280px;
+    border-radius: 12px;
+  }
+
+  .board-square-wrapper.board-zoomed {
+    width: 560px;
+    height: 560px;
+    max-width: none;
+    max-height: none;
+  }
+
+  /* Move primary buttons out of tiny board center into thumb-friendly mobile dock */
+  .desktop-center-actions {
+    display: none;
+  }
+
+  .center-turn-header {
+    display: none;
+  }
+
+  .board-center {
+    padding: 6px;
+    gap: 6px;
+    justify-content: center;
+  }
+
+  .die-cube {
+    width: 38px;
+    height: 38px;
+    padding: 6px;
+    border-radius: 9px;
   }
 
   .center-log-box {
-    max-height: 92px;
+    max-height: 68px;
+    min-height: 36px;
+  }
+
+  .tile-name {
+    font-size: 0.44rem;
+    line-height: 1.04;
+  }
+
+  .board-square-wrapper.board-zoomed .tile-name {
+    font-size: 0.6rem;
+  }
+
+  .tile-strip {
+    font-size: 0.45rem;
+    min-height: 11px;
+  }
+
+  .board-square-wrapper.board-zoomed .tile-strip {
+    font-size: 0.6rem;
+    min-height: 15px;
+  }
+
+  /* Thumb-friendly Mobile Action Dock above bottom tabs */
+  .mobile-action-dock {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 7px 10px;
+    flex-shrink: 0;
+    min-height: 50px;
+  }
+
+  .mobile-action-dock .center-action-deck {
+    width: 100%;
+    gap: 6px;
+  }
+
+  .mobile-action-dock .btn {
+    min-height: 38px;
+    padding: 7px 13px;
+    font-size: 0.84rem;
   }
 
   .mobile-drawer-bar {
@@ -89,14 +213,14 @@
     align-items: center;
     justify-content: center;
     gap: 2px;
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     font-weight: 700;
     color: var(--text-muted);
   }
 
   .mobile-tab-btn.active {
     color: var(--accent);
-    background: rgba(139, 92, 246, 0.12);
+    background: rgba(139, 92, 246, 0.14);
   }
 }
 
@@ -104,10 +228,21 @@
 @media (max-width: 960px) and (orientation: landscape) and (max-height: 520px) {
   .game-shell {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-columns: minmax(0, 1fr) 268px;
     height: 100dvh;
     padding: 4px 6px;
     gap: 6px;
+  }
+
+  .mobile-top-hud,
+  .mobile-action-dock,
+  .mobile-drawer-bar {
+    display: none;
+  }
+
+  .desktop-center-actions,
+  .center-turn-header {
+    display: flex;
   }
 
   .game-rail.rail-left {
@@ -128,9 +263,5 @@
     height: calc(100dvh - 10px);
     min-width: 260px;
     min-height: 260px;
-  }
-
-  .mobile-drawer-bar {
-    display: none;
   }
 }

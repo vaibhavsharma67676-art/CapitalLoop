@@ -1,5 +1,7 @@
 export type MapId = 'classic-metro' | 'global-capitals';
 
+export type CountryCode = 'BR' | 'IT' | 'DE' | 'IN' | 'JP' | 'FR' | 'GB' | 'US' | 'AE' | 'SG';
+
 export type ColorGroup =
   | 'brown'
   | 'lightBlue'
@@ -34,6 +36,9 @@ export interface BaseTile {
 export interface StreetTile extends BaseTile {
   type: 'STREET';
   colorGroup: ColorGroup;
+  country: string;
+  countryCode: CountryCode;
+  countryFlag: string;
   price: number;
   baseRent: number;
   rent1House: number;
@@ -44,12 +49,17 @@ export interface StreetTile extends BaseTile {
   houseCost: number;
   hotelCost: number;
   mortgageValue: number;
+  specialRules?: string;
 }
 
 export interface TransitTile extends BaseTile {
   type: 'TRANSIT';
+  country: string;
+  countryCode: CountryCode;
+  countryFlag: string;
   price: number;
   mortgageValue: number;
+  specialRules?: string;
 }
 
 export interface UtilityTile extends BaseTile {
@@ -57,6 +67,7 @@ export interface UtilityTile extends BaseTile {
   utilityKind: 'ELECTRIC' | 'WATER';
   price: number;
   mortgageValue: number;
+  specialRules?: string;
 }
 
 export interface TaxTile extends BaseTile {

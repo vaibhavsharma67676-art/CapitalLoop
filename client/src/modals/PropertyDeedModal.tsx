@@ -11,6 +11,8 @@ import {
   type GameAction,
 } from '@capitalloop/shared';
 import { useState } from 'react';
+import { CountryFlag } from '../assets/countryFlags';
+import { PlaneIcon, SolarSunIcon, WaterDropIcon } from '../assets/icons';
 import { ModalShell } from './ModalShell';
 
 interface PropertyDeedModalProps {
@@ -57,7 +59,7 @@ export function PropertyDeedModal({
   } else if (tile.type === 'TRANSIT') {
     bannerBg = '#334155';
   } else if (tile.type === 'UTILITY') {
-    bannerBg = '#0284c7';
+    bannerBg = tile.utilityKind === 'ELECTRIC' ? '#d97706' : '#0284c7';
   } else if (tile.type === 'TAX') {
     bannerBg = '#be123c';
   }
@@ -129,10 +131,38 @@ export function PropertyDeedModal({
     Boolean(prop?.mortgaged) &&
     (me?.cash ?? 0) >= unmortgageCost;
 
+  const subtitle =
+    tile.type === 'STREET'
+      ? `${tile.country} • Tile #${tile.id}`
+      : tile.type === 'TRANSIT'
+        ? `International Airport • Tile #${tile.id}`
+        : tile.type === 'UTILITY'
+          ? `Global Utility • Tile #${tile.id}`
+          : `Tile #${tile.id}`;
+
   return (
-    <ModalShell title="Property Deed" subtitle={`Tile #${tile.id}`} onClose={onClose}>
-      <div className="deed-banner" style={{ background: bannerBg }}>
-        {tile.name}
+    <ModalShell title="Property Deed" subtitle={subtitle} onClose={onClose}>
+      <div
+        className="deed-banner"
+        style={{
+          background: bannerBg,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 10,
+        }}
+      >
+        {(tile.type === 'STREET' || tile.type === 'TRANSIT') && (
+          <CountryFlag code={tile.countryCode} countryName={tile.country} size={26} />
+        )}
+        {tile.type === 'TRANSIT' && <PlaneIcon size={18} />}
+        {tile.type === 'UTILITY' &&
+          (tile.utilityKind === 'ELECTRIC' ? (
+            <SolarSunIcon size={20} />
+          ) : (
+            <WaterDropIcon size={20} />
+          ))}
+        <span>{tile.name}</span>
       </div>
 
       {!isPurchasableTile(tile) ? (
@@ -147,15 +177,32 @@ export function PropertyDeedModal({
         </p>
       ) : (
         <>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.86rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.86rem', gap: 10, flexWrap: 'wrap' }}>
             <span>
-              Price: <strong>${tile.price}</strong>
+              Purchase Price: <strong>${tile.price}</strong>
             </span>
-            <span>
-              Owner:{' '}
-              <strong style={{ color: owner?.color ?? 'var(--text-muted)' }}>
-                {owner ? owner.nickname : 'Bank (Unowned)'}
-              </strong>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span>Owner:</span>
+              {owner ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '2px 9px',
+                    borderRadius: 999,
+                    border: `1.5px solid ${owner.color}`,
+                    background: 'var(--bg-surface-elevated)',
+                    fontWeight: 700,
+                    color: owner.color,
+                  }}
+                >
+                  <span className="color-dot" style={{ background: owner.color, width: 9, height: 9 }} />
+                  {owner.nickname}
+                </span>
+              ) : (
+                <strong style={{ color: 'var(--text-muted)' }}>Bank (Unowned)</strong>
+              )}
             </span>
           </div>
 
@@ -179,12 +226,16 @@ export function PropertyDeedModal({
             <table className="deed-rent-table">
               <tbody>
                 <tr>
+                  <td>Country Group</td>
+                  <td>{tile.country}</td>
+                </tr>
+                <tr>
                   <td>Base Rent</td>
                   <td>${tile.baseRent}</td>
                 </tr>
                 {gameState.settings.doubleRentOnColorSet && (
                   <tr>
-                    <td>Full Color Set (Unimproved)</td>
+                    <td>Full Country Set (Unimproved)</td>
                     <td>${tile.baseRent * 2}</td>
                   </tr>
                 )}
@@ -211,7 +262,7 @@ export function PropertyDeedModal({
                 <tr>
                   <td>House / Hotel Cost</td>
                   <td>
-                    ${tile.houseCost} / ${tile.hotelCost}
+                    ${tile.houseCost} /${tile.hotelCost}
                   </td>
                 </tr>
                 <tr>
@@ -228,7 +279,7 @@ export function PropertyDeedModal({
                 {TRANSIT_RENT_SCHEDULE.map((rent, idx) => (
                   <tr key={idx}>
                     <td>
-                      {idx + 1} Transit Hub{idx > 0 ? 's' : ''} Owned
+                      {idx + 1} Airport{idx > 0 ? 's' : ''} Owned
                     </td>
                     <td>${rent}</td>
                   </tr>

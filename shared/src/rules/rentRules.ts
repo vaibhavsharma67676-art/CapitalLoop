@@ -124,7 +124,7 @@ export function calculateRent(
     return {
       amount: baseTransitRent * multiplier,
       ownerId: owner.id,
-      reason: `${tile.name} transit rent (${ownedCount} owned${multiplier > 1 ? ` x${multiplier}` : ''})`,
+      reason: `${tile.name} airport rent (${ownedCount} airport${ownedCount > 1 ? 's' : ''} owned${multiplier > 1 ? ` x${multiplier}` : ''})`,
     };
   }
 

@@ -151,6 +151,8 @@ export function ActionBar({
     const tile = getTileById(gameState.settings.mapId, gameState.pendingPurchaseTileId);
     const price = isPurchasableTile(tile) ? tile.price : 0;
     const canAfford = me.cash >= price;
+    const buyLabel =
+      tile.type === 'STREET' ? `${tile.countryFlag} ${tile.name}` : tile.name;
 
     return (
       <div className="center-action-deck">
@@ -160,7 +162,7 @@ export function ActionBar({
           disabled={!canAfford || submitting}
           onClick={() => void dispatch({ type: 'BUY_PROPERTY' })}
         >
-          Buy {tile.shortLabel} (${price})
+          Buy {buyLabel} (${price})
         </button>
         <button
           type="button"

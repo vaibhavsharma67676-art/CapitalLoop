@@ -13,14 +13,14 @@ interface ThemeCustomizerProps {
 }
 
 const GROUP_LABELS: { key: ColorGroup; label: string }[] = [
-  { key: 'brown', label: 'Brown' },
-  { key: 'lightBlue', label: 'Sky Blue' },
-  { key: 'pink', label: 'Pink' },
-  { key: 'orange', label: 'Orange' },
-  { key: 'red', label: 'Red' },
-  { key: 'yellow', label: 'Yellow' },
-  { key: 'green', label: 'Green' },
-  { key: 'darkBlue', label: 'Indigo' },
+  { key: 'brown', label: 'Brazil' },
+  { key: 'lightBlue', label: 'Italy' },
+  { key: 'pink', label: 'Germany' },
+  { key: 'orange', label: 'India' },
+  { key: 'red', label: 'Japan' },
+  { key: 'yellow', label: 'France' },
+  { key: 'green', label: 'United Kingdom' },
+  { key: 'darkBlue', label: 'USA' },
 ];
 
 export function ThemeCustomizer({
@@ -86,7 +86,7 @@ export function ThemeCustomizer({
 
       <div>
         <div className="setting-label" style={{ marginBottom: 8 }}>
-          Property Group Colors
+          Country Group Colors
         </div>
         <div className="settings-grid">
           {GROUP_LABELS.map((group) => (

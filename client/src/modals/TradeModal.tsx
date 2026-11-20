@@ -8,6 +8,7 @@ import {
   type TradeOfferItem,
 } from '@capitalloop/shared';
 import { useMemo, useState } from 'react';
+import { CountryFlag } from '../assets/countryFlags';
 import { TradeArrowsIcon } from '../assets/icons';
 import { ModalShell } from './ModalShell';
 
@@ -366,11 +367,16 @@ function TradeColumn({
                 disabled={readOnly}
                 onClick={() => onToggleProperty(tileId)}
               >
-                <span style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                   <span className="color-dot" style={{ background: dotColor }} />
-                  <span>{tile.name}</span>
+                  {(tile.type === 'STREET' || tile.type === 'TRANSIT') && (
+                    <CountryFlag code={tile.countryCode} countryName={tile.country} size={15} />
+                  )}
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {tile.name}
+                  </span>
                 </span>
-                <span>${price}</span>
+                <span style={{ flexShrink: 0 }}>${price}</span>
               </button>
             );
           })

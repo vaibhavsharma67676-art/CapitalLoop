@@ -6,6 +6,7 @@ import {
   type PrivateRoomSnapshot,
 } from '@capitalloop/shared';
 import { useEffect, useState } from 'react';
+import { CountryFlag } from '../assets/countryFlags';
 import {
   CheckIcon,
   CopyIcon,
@@ -15,10 +16,12 @@ import {
   VolumeIcon,
 } from '../assets/icons';
 import { GameBoard } from '../board/GameBoard';
+import { ActionBar } from '../components/ActionBar';
 import { ActivityLog } from '../components/ActivityLog';
 import { ChatPanel } from '../components/ChatPanel';
 import { PlayerListPanel } from '../components/PlayerListPanel';
 import { SettingsPanel } from '../components/SettingsPanel';
+import { useCountdownSeconds } from '../hooks/useTurnTimer';
 import { AuctionModal } from '../modals/AuctionModal';
 import { BankruptcyModal } from '../modals/BankruptcyModal';
 import { CardDrawModal } from '../modals/CardDrawModal';
@@ -59,6 +62,7 @@ export function GameScreen({
 }: GameScreenProps) {
   const [modal, setModal] = useState<ActiveModalState>({ kind: 'NONE' });
   const [mobileTab, setMobileTab] = useState<MobileDrawerTab>('board');
+  const [mobileZoomed, setMobileZoomed] = useState<boolean>(false);
   const [muted, setMuted] = useState<boolean>(() => soundService.isMuted());
   const [copied, setCopied] = useState(false);
   const [dismissedJailTurn, setDismissedJailTurn] = useState<number>(-1);
@@ -66,7 +70,9 @@ export function GameScreen({
   const me = gameState.players[myPlayerId];
   const isHost = room.hostId === myPlayerId;
   const currentPlayerId = gameState.turnOrder[gameState.currentPlayerIndex] ?? '';
+  const currentPlayer = gameState.players[currentPlayerId];
   const isMyTurn = currentPlayerId === myPlayerId;
+  const remainingSeconds = useCountdownSeconds(gameState.turnDeadlineAt);
   const inviteUrl = `${window.location.origin}/join/${room.roomCode}`;
 
   const myProperties = Object.values(gameState.properties)
@@ -117,6 +123,66 @@ export function GameScreen({
 
   return (
     <div className="game-shell">
+      {/* MOBILE TOP COMPACT HUD (visible on <= 860px portrait) */}
+      <header className="panel-card mobile-top-hud">
+        <div className="mobile-hud-left">
+          <span
+            className="color-dot"
+            style={{ background: currentPlayer?.color ?? 'var(--accent)', width: 10, height: 10 }}
+          />
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {isMyTurn ? 'Your Turn' : `${currentPlayer?.nickname ?? 'Player'}'s Turn`}
+            </div>
+            <div style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 700 }}>
+              Cash: ${me?.cash ?? 0}
+              {remainingSeconds !== null ? ` • ${remainingSeconds}s` : ''}
+            </div>
+          </div>
+        </div>
+
+        <div className="mobile-hud-actions">
+          {mobileTab === 'board' && (
+            <button
+              type="button"
+              className={`btn btn-xs ${mobileZoomed ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setMobileZoomed((z) => !z)}
+              title="Toggle board zoom for closer tile reading"
+            >
+              {mobileZoomed ? 'Fit' : 'Zoom'}
+            </button>
+          )}
+          {gameState.settings.tradingEnabled && me && !me.isBankrupt && gameState.phase !== 'GAME_OVER' && (
+            <button
+              type="button"
+              className="btn btn-secondary btn-xs"
+              onClick={() => setModal({ kind: 'TRADE_CREATE' })}
+              aria-label="Create trade"
+            >
+              <TradeArrowsIcon size={12} />
+            </button>
+          )}
+          <button
+            type="button"
+            className="icon-btn"
+            style={{ width: 28, height: 28 }}
+            onClick={() => setModal({ kind: 'SETTINGS_VIEW' })}
+            aria-label="View room settings"
+          >
+            <SettingsIcon size={13} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            style={{ width: 28, height: 28 }}
+            onClick={onOpenTheme}
+            aria-label="Customize theme"
+          >
+            <PaletteIcon size={13} />
+          </button>
+        </div>
+      </header>
+
       {/* LEFT RAIL: Brand Bar, Share Private Room, Room Chat */}
       <aside
         className={`game-rail rail-left ${
@@ -194,11 +260,24 @@ export function GameScreen({
           gameState={gameState}
           myPlayerId={myPlayerId}
           isRollingDice={isRollingDice}
+          mobileZoomed={mobileZoomed}
           onAction={onAction}
           onInspectTile={(tileId) => setModal({ kind: 'DEED', tileId })}
           onOpenMortgage={() => setModal({ kind: 'MORTGAGE' })}
         />
       </main>
+
+      {/* MOBILE THUMB-FRIENDLY ACTION DOCK (visible on <= 860px when on board tab) */}
+      {mobileTab === 'board' && (
+        <div className="panel-card mobile-action-dock">
+          <ActionBar
+            gameState={gameState}
+            myPlayerId={myPlayerId}
+            onAction={onAction}
+            onOpenMortgage={() => setModal({ kind: 'MORTGAGE' })}
+          />
+        </div>
+      )}
 
       {/* RIGHT RAIL: Players List, Bankrupt/Trades, My Properties */}
       <aside
@@ -295,11 +374,14 @@ export function GameScreen({
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
                       <span className="color-dot" style={{ background: dotColor }} />
+                      {(tile.type === 'STREET' || tile.type === 'TRANSIT') && (
+                        <CountryFlag code={tile.countryCode} countryName={tile.country} size={15} />
+                      )}
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {tile.name}
                       </span>
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: prop.mortgaged ? '#fb7185' : 'var(--text-secondary)' }}>
+                    <span style={{ fontSize: '0.72rem', color: prop.mortgaged ? '#fb7185' : 'var(--text-secondary)', flexShrink: 0 }}>
                       {prop.mortgaged
                         ? 'MORT'
                         : prop.houses === HOTEL_LEVEL
@@ -325,7 +407,9 @@ export function GameScreen({
             className={`mobile-tab-btn ${mobileTab === tab ? 'active' : ''}`}
             onClick={() => setMobileTab(tab)}
           >
-            <span style={{ textTransform: 'capitalize' }}>{tab}</span>
+            <span style={{ textTransform: 'capitalize' }}>
+              {tab === 'players' && pendingTrades.length > 0 ? `Players (${pendingTrades.length})` : tab}
+            </span>
           </button>
         ))}
       </nav>

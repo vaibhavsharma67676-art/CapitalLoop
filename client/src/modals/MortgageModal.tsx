@@ -7,6 +7,7 @@ import {
   type GameAction,
 } from '@capitalloop/shared';
 import { useState } from 'react';
+import { CountryFlag } from '../assets/countryFlags';
 import { ModalShell } from './ModalShell';
 
 interface MortgageModalProps {
@@ -67,6 +68,9 @@ export function MortgageModal({
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span className="color-dot" style={{ background: dotColor }} />
+                  {(tile.type === 'STREET' || tile.type === 'TRANSIT') && (
+                    <CountryFlag code={tile.countryCode} countryName={tile.country} size={17} />
+                  )}
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '0.88rem' }}>{tile.name}</div>
                     <div style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>

@@ -22,6 +22,7 @@ export function CornerTile({
 
   return (
     <div
+      data-tile-id={tile.id}
       className={`corner-tile ${isStart ? 'corner-start' : ''}`}
       style={{ gridColumn, gridRow }}
       title={tile.name}
