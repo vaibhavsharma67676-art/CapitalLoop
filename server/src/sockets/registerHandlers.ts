@@ -46,6 +46,7 @@ export function registerSocketHandlers(
       gameController,
       joinRateLimiter,
       eventRateLimiter,
+      config.trustProxy,
     );
     registerGameSocketHandlers(socket, gameController, eventRateLimiter);
     registerChatSocketHandlers(io, socket, roomManager, chatRateLimiter);

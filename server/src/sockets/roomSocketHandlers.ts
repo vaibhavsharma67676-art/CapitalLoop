@@ -14,10 +14,20 @@ import {
   updateSettingsSchema,
 } from '../security/validators';
 
-export function getSocketClientIp(socket: Socket): string {
-  const forwarded = socket.handshake.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    return forwarded.split(',')[0]!.trim();
+export function getSocketClientIp(socket: Socket, trustProxy = 0): string {
+  if (trustProxy > 0) {
+    const forwarded = socket.handshake.headers['x-forwarded-for'];
+    const raw = Array.isArray(forwarded) ? forwarded.join(',') : forwarded;
+    if (typeof raw === 'string' && raw.length > 0) {
+      const hops = raw
+        .split(',')
+        .map((part) => part.trim())
+        .filter(Boolean);
+      if (hops.length > 0) {
+        const index = Math.max(0, hops.length - trustProxy);
+        return hops[index] || socket.handshake.address || 'unknown';
+      }
+    }
   }
   return socket.handshake.address || 'unknown';
 }
@@ -29,8 +39,9 @@ export function registerRoomSocketHandlers(
   gameController: GameController,
   joinRateLimiter: SlidingWindowRateLimiter,
   eventRateLimiter: SlidingWindowRateLimiter,
+  trustProxy = 0,
 ): void {
-  const clientIp = getSocketClientIp(socket);
+  const clientIp = getSocketClientIp(socket, trustProxy);
 
   socket.on('room:create', (rawPayload, ack) => {
     if (typeof ack !== 'function') return;

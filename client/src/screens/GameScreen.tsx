@@ -5,7 +5,7 @@ import {
   type GameAction,
   type PrivateRoomSnapshot,
 } from '@capitalloop/shared';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CountryFlag } from '../assets/countryFlags';
 import {
   CheckIcon,
@@ -101,12 +101,11 @@ export function GameScreen({
     }
   };
 
-  const showJailModal =
+  const showJailNotice =
     isMyTurn &&
     gameState.phase === 'WAITING_FOR_ROLL' &&
     Boolean(me?.inJail) &&
-    dismissedJailTurn !== gameState.turnNumber &&
-    modal.kind === 'NONE';
+    dismissedJailTurn !== gameState.turnNumber;
 
   const showMandatoryDebtModal =
     gameState.phase === 'DEBT_RESOLUTION' &&
@@ -121,6 +120,37 @@ export function GameScreen({
       ? gameState.trades.find((t) => t.id === modal.tradeId)
       : undefined;
 
+  const isCardBannerActive = gameState.phase === 'CARD_REVEAL' && Boolean(gameState.pendingCard);
+  const isMyTaxBannerActive =
+    gameState.phase === 'TAX_DECISION' &&
+    Boolean(gameState.pendingTax) &&
+    gameState.pendingTax?.playerId === myPlayerId;
+
+  // Compact non-blocking event notification for Cards, Taxes, and Prison status
+  let activeEventBanner: ReactNode = null;
+  if (isCardBannerActive && gameState.pendingCard) {
+    activeEventBanner = (
+      <CardDrawModal
+        pendingCard={gameState.pendingCard}
+        drawerName={gameState.players[gameState.pendingCard.drawnByPlayerId]?.nickname ?? 'Player'}
+        isMyCard={gameState.pendingCard.drawnByPlayerId === myPlayerId}
+        onAction={onAction}
+      />
+    );
+  } else if (isMyTaxBannerActive && gameState.pendingTax) {
+    activeEventBanner = <TaxModal pendingTax={gameState.pendingTax} onAction={onAction} />;
+  } else if (showJailNotice && me) {
+    activeEventBanner = (
+      <JailModal
+        player={me}
+        onClose={() => setDismissedJailTurn(gameState.turnNumber)}
+      />
+    );
+  }
+
+  // Banner already carries the Resolve / Tax buttons, so skip duplicating them in ActionBar / mobile dock
+  const bannerHandlesPhaseAction = isCardBannerActive || isMyTaxBannerActive;
+
   return (
     <div className="game-shell">
       {/* MOBILE TOP COMPACT HUD (visible on <= 860px portrait) */}
@@ -130,13 +160,18 @@ export function GameScreen({
             className="color-dot"
             style={{ background: currentPlayer?.color ?? 'var(--accent)', width: 10, height: 10 }}
           />
-          <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '0.78rem', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+          <div className="mobile-hud-text">
+            <div className="mobile-hud-turn">
               {isMyTurn ? 'Your Turn' : `${currentPlayer?.nickname ?? 'Player'}'s Turn`}
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#34d399', fontWeight: 700 }}>
-              Cash: ${me?.cash ?? 0}
-              {remainingSeconds !== null ? ` • ${remainingSeconds}s` : ''}
+            <div className="mobile-hud-meta">
+              <span className="mobile-hud-cash">${me?.cash ?? 0}</span>
+              <span>• T{gameState.turnNumber}</span>
+              {remainingSeconds !== null && (
+                <span className={remainingSeconds <= 10 ? 'mobile-hud-urgent' : ''}>
+                  • {remainingSeconds}s
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -152,20 +187,31 @@ export function GameScreen({
               {mobileZoomed ? 'Fit' : 'Zoom'}
             </button>
           )}
-          {gameState.settings.tradingEnabled && me && !me.isBankrupt && gameState.phase !== 'GAME_OVER' && (
-            <button
-              type="button"
-              className="btn btn-secondary btn-xs"
-              onClick={() => setModal({ kind: 'TRADE_CREATE' })}
-              aria-label="Create trade"
-            >
-              <TradeArrowsIcon size={12} />
-            </button>
-          )}
+          {gameState.settings.tradingEnabled &&
+            me &&
+            !me.isBankrupt &&
+            gameState.phase !== 'GAME_OVER' && (
+              <button
+                type="button"
+                className="icon-btn mobile-hud-icon-btn"
+                onClick={() => setModal({ kind: 'TRADE_CREATE' })}
+                aria-label="Create trade"
+                title="Create Trade"
+              >
+                <TradeArrowsIcon size={13} />
+              </button>
+            )}
           <button
             type="button"
-            className="icon-btn"
-            style={{ width: 28, height: 28 }}
+            className="icon-btn mobile-hud-icon-btn"
+            onClick={() => setMuted(soundService.toggleMute())}
+            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
+          >
+            <VolumeIcon muted={muted} size={13} />
+          </button>
+          <button
+            type="button"
+            className="icon-btn mobile-hud-icon-btn"
             onClick={() => setModal({ kind: 'SETTINGS_VIEW' })}
             aria-label="View room settings"
           >
@@ -173,8 +219,7 @@ export function GameScreen({
           </button>
           <button
             type="button"
-            className="icon-btn"
-            style={{ width: 28, height: 28 }}
+            className="icon-btn mobile-hud-icon-btn"
             onClick={onOpenTheme}
             aria-label="Customize theme"
           >
@@ -253,22 +298,29 @@ export function GameScreen({
       </aside>
 
       {/* CENTER STAGE: Square Clockwise Monopoly Board */}
-      <main
-        className={`game-board-stage ${mobileTab === 'board' ? '' : 'mobile-hidden'}`}
-      >
+      <main className={`game-board-stage ${mobileTab === 'board' ? '' : 'mobile-hidden'}`}>
         <GameBoard
           gameState={gameState}
           myPlayerId={myPlayerId}
           isRollingDice={isRollingDice}
           mobileZoomed={mobileZoomed}
+          inlineEventBanner={activeEventBanner}
+          bannerHandlesPhaseAction={bannerHandlesPhaseAction}
           onAction={onAction}
           onInspectTile={(tileId) => setModal({ kind: 'DEED', tileId })}
           onOpenMortgage={() => setModal({ kind: 'MORTGAGE' })}
         />
       </main>
 
-      {/* MOBILE THUMB-FRIENDLY ACTION DOCK (visible on <= 860px when on board tab) */}
-      {mobileTab === 'board' && (
+      {/* MOBILE NON-BLOCKING EVENT NOTIFICATION SLOT (visible on <= 860px when event is active) */}
+      {mobileTab === 'board' && activeEventBanner && (
+        <div className="mobile-event-slot" aria-live="polite">
+          {activeEventBanner}
+        </div>
+      )}
+
+      {/* MOBILE THUMB-FRIENDLY ACTION DOCK (hidden when Card/Tax banner already renders the action) */}
+      {mobileTab === 'board' && !bannerHandlesPhaseAction && (
         <div className="panel-card mobile-action-dock">
           <ActionBar
             gameState={gameState}
@@ -303,16 +355,19 @@ export function GameScreen({
                   Bankrupt
                 </button>
               )}
-              {gameState.settings.tradingEnabled && me && !me.isBankrupt && gameState.phase !== 'GAME_OVER' && (
-                <button
-                  type="button"
-                  className="btn btn-primary btn-xs"
-                  onClick={() => setModal({ kind: 'TRADE_CREATE' })}
-                >
-                  <TradeArrowsIcon size={12} />
-                  + Create
-                </button>
-              )}
+              {gameState.settings.tradingEnabled &&
+                me &&
+                !me.isBankrupt &&
+                gameState.phase !== 'GAME_OVER' && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-xs"
+                    onClick={() => setModal({ kind: 'TRADE_CREATE' })}
+                  >
+                    <TradeArrowsIcon size={12} />
+                    + Create
+                  </button>
+                )}
             </div>
           </div>
 
@@ -363,8 +418,6 @@ export function GameScreen({
             ) : (
               myProperties.map((prop) => {
                 const tile = getTileById(gameState.settings.mapId, prop.tileId);
-                const dotColor =
-                  tile.type === 'STREET' ? `var(--group-${tile.colorGroup})` : '#94a3b8';
                 return (
                   <button
                     key={prop.tileId}
@@ -373,7 +426,10 @@ export function GameScreen({
                     onClick={() => setModal({ kind: 'DEED', tileId: prop.tileId })}
                   >
                     <span style={{ display: 'flex', alignItems: 'center', gap: 7, minWidth: 0 }}>
-                      <span className="color-dot" style={{ background: dotColor }} />
+                      <span
+                        className="color-dot"
+                        style={{ background: me?.color ?? 'var(--accent)' }}
+                      />
                       {(tile.type === 'STREET' || tile.type === 'TRANSIT') && (
                         <CountryFlag code={tile.countryCode} countryName={tile.country} size={15} />
                       )}
@@ -414,36 +470,13 @@ export function GameScreen({
         ))}
       </nav>
 
-      {/* SERVER-DRIVEN PHASE MODALS */}
+      {/* ESSENTIAL INTERACTIVE MODALS (Auctions, Debt Liquidation, Game Over, User-Opened Dialogs) */}
       {gameState.phase === 'AUCTION_ACTIVE' && gameState.activeAuction && (
         <AuctionModal
           auction={gameState.activeAuction}
           gameState={gameState}
           myPlayerId={myPlayerId}
           onAction={onAction}
-        />
-      )}
-
-      {gameState.phase === 'TAX_DECISION' &&
-        gameState.pendingTax &&
-        gameState.pendingTax.playerId === myPlayerId && (
-          <TaxModal pendingTax={gameState.pendingTax} onAction={onAction} />
-        )}
-
-      {gameState.phase === 'CARD_REVEAL' && gameState.pendingCard && (
-        <CardDrawModal
-          pendingCard={gameState.pendingCard}
-          drawerName={gameState.players[gameState.pendingCard.drawnByPlayerId]?.nickname ?? 'Player'}
-          isMyCard={gameState.pendingCard.drawnByPlayerId === myPlayerId}
-          onAction={onAction}
-        />
-      )}
-
-      {showJailModal && me && (
-        <JailModal
-          player={me}
-          onAction={onAction}
-          onClose={() => setDismissedJailTurn(gameState.turnNumber)}
         />
       )}
 

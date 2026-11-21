@@ -1,89 +1,46 @@
 import {
   JAIL_BAIL_AMOUNT,
   MAX_JAIL_TURNS,
-  type GameAction,
   type PlayerGameState,
 } from '@capitalloop/shared';
-import { useState } from 'react';
-import { PrisonBarsIcon } from '../assets/icons';
-import { ModalShell } from './ModalShell';
+import { CloseIcon, PrisonBarsIcon } from '../assets/icons';
 
 interface JailModalProps {
   player: PlayerGameState;
-  onAction: (action: GameAction) => Promise<boolean>;
   onClose: () => void;
 }
 
-export function JailModal({ player, onAction, onClose }: JailModalProps) {
-  const [busy, setBusy] = useState(false);
-
-  const run = async (action: GameAction) => {
-    setBusy(true);
-    try {
-      const ok = await onAction(action);
-      if (ok) onClose();
-    } finally {
-      setBusy(false);
-    }
-  };
-
+/**
+ * Compact, non-blocking Glassmorphism Prison status notice.
+ * Action buttons (Roll Doubles, Pay Bail, Free Card) stay unified in ActionBar
+ * so mobile and desktop never show duplicate controls.
+ */
+export function JailModal({ player, onClose }: JailModalProps) {
   return (
-    <ModalShell
-      title="You Are in Prison"
-      subtitle={`Turn ${player.jailTurns + 1} of ${MAX_JAIL_TURNS}`}
-      onClose={onClose}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-        <div
-          style={{
-            width: 52,
-            height: 52,
-            borderRadius: 12,
-            background: 'var(--bg-surface-elevated)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-          }}
-        >
-          <PrisonBarsIcon size={28} />
+    <div className="inline-event-banner event-jail" role="status" aria-live="polite">
+      <div className="inline-event-icon" aria-hidden="true">
+        <PrisonBarsIcon size={17} />
+      </div>
+
+      <div className="inline-event-copy">
+        <div className="inline-event-eyebrow">
+          In Prison • Turn {player.jailTurns + 1}/{MAX_JAIL_TURNS}
         </div>
-        <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-secondary)', lineHeight: 1.45 }}>
-          Choose how to escape Prison this turn. Rolling doubles frees you immediately. On your
-          3rd failed attempt, ${JAIL_BAIL_AMOUNT} bail is charged automatically.
+        <p className="inline-event-desc">
+          Roll doubles to escape, pay ${JAIL_BAIL_AMOUNT} bail, or use a Prison Free card below.
         </p>
       </div>
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <div className="inline-event-actions">
         <button
           type="button"
-          className="btn btn-primary"
-          disabled={busy}
-          onClick={() => void run({ type: 'ROLL_DICE' })}
+          className="icon-btn inline-event-dismiss"
+          onClick={onClose}
+          aria-label="Dismiss prison notice"
         >
-          Roll Dice for Doubles
+          <CloseIcon size={12} />
         </button>
-
-        <button
-          type="button"
-          className="btn btn-warning"
-          disabled={busy || player.cash < JAIL_BAIL_AMOUNT}
-          onClick={() => void run({ type: 'PAY_JAIL_BAIL' })}
-        >
-          Pay ${JAIL_BAIL_AMOUNT} Bail (Cash: ${player.cash})
-        </button>
-
-        {player.jailFreeCards > 0 && (
-          <button
-            type="button"
-            className="btn btn-success"
-            disabled={busy}
-            onClick={() => void run({ type: 'USE_JAIL_CARD' })}
-          >
-            Use Get Out of Prison Free Card ({player.jailFreeCards} owned)
-          </button>
-        )}
       </div>
-    </ModalShell>
+    </div>
   );
 }

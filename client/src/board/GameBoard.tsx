@@ -4,7 +4,7 @@ import {
   type CornerTile as CornerTileType,
   type GameAction,
 } from '@capitalloop/shared';
-import { useRef } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { ActionBar } from '../components/ActionBar';
 import { ActivityLog } from '../components/ActivityLog';
 import { DiceRoller } from '../components/DiceRoller';
@@ -18,6 +18,8 @@ interface GameBoardProps {
   myPlayerId: string;
   isRollingDice: boolean;
   mobileZoomed?: boolean;
+  inlineEventBanner?: ReactNode;
+  bannerHandlesPhaseAction?: boolean;
   onAction: (action: GameAction) => Promise<boolean>;
   onInspectTile: (tileId: number) => void;
   onOpenMortgage: () => void;
@@ -35,6 +37,8 @@ export function GameBoard({
   myPlayerId,
   isRollingDice,
   mobileZoomed = false,
+  inlineEventBanner,
+  bannerHandlesPhaseAction = false,
   onAction,
   onInspectTile,
   onOpenMortgage,
@@ -93,7 +97,7 @@ export function GameBoard({
             );
           })}
 
-          {/* Center Board Area (Richup-Style Dice, Primary Action & Activity Log) */}
+          {/* Center Board Area: Turn Header, Compact Event Banner, Dice, Actions & Live Log */}
           <div className="board-center">
             <div className="center-turn-header">
               <div className="turn-pill">
@@ -108,7 +112,7 @@ export function GameBoard({
                 </span>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="center-turn-meta">
                 <span className="badge-pill">Turn #{gameState.turnNumber}</span>
                 {remainingSeconds !== null && (
                   <span className={`timer-pill ${remainingSeconds <= 10 ? 'urgent' : ''}`}>
@@ -117,6 +121,12 @@ export function GameBoard({
                 )}
               </div>
             </div>
+
+            {inlineEventBanner && (
+              <div className="desktop-event-slot" aria-live="polite">
+                {inlineEventBanner}
+              </div>
+            )}
 
             <div className="center-dice-stage">
               <DiceRoller
@@ -130,6 +140,7 @@ export function GameBoard({
                 <ActionBar
                   gameState={gameState}
                   myPlayerId={myPlayerId}
+                  hideBannerHandledActions={bannerHandlesPhaseAction}
                   onAction={onAction}
                   onOpenMortgage={onOpenMortgage}
                 />

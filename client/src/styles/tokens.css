@@ -1,17 +1,38 @@
 :root,
 [data-theme='dark'] {
-  --bg-main: #120e1e;
-  --bg-surface: #1c172e;
-  --bg-surface-elevated: #251f3d;
-  --bg-board: #171226;
-  --bg-tile: #221c38;
-  --bg-tile-hover: #2c2447;
-  --border-subtle: rgba(167, 139, 250, 0.16);
-  --border-strong: rgba(167, 139, 250, 0.32);
+  --bg-main: #0c0e1a;
+  --bg-surface: rgba(22, 26, 44, 0.78);
+  --bg-surface-solid: #161a2c;
+  --bg-surface-elevated: rgba(34, 40, 66, 0.72);
+  --bg-board: #111526;
+  --bg-tile: rgba(255, 255, 255, 0.085);
+  --bg-tile-hover: rgba(255, 255, 255, 0.14);
 
-  --text-primary: #f5f3ff;
-  --text-secondary: #b4a9d6;
-  --text-muted: #7e73a3;
+  /* Unified Glassmorphism Tokens */
+  --glass-tile-bg: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.125) 0%,
+    rgba(255, 255, 255, 0.045) 100%
+  );
+  --glass-tile-bg-hover: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.18) 0%,
+    rgba(255, 255, 255, 0.08) 100%
+  );
+  --glass-tile-border: rgba(255, 255, 255, 0.16);
+  --glass-tile-border-hover: rgba(255, 255, 255, 0.34);
+  --glass-tile-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 4px 12px rgba(0, 0, 0, 0.24);
+  --glass-meta-bg: rgba(255, 255, 255, 0.06);
+  --glass-meta-border: rgba(255, 255, 255, 0.1);
+  --glass-banner-bg: rgba(18, 22, 38, 0.86);
+  --glass-blur: blur(12px);
+
+  --border-subtle: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.22);
+
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
 
   --accent: #8b5cf6;
   --btn-primary: #7c4dff;
@@ -20,6 +41,7 @@
   --btn-success: #10b981;
   --btn-warning: #f59e0b;
 
+  /* Preserved for Deed Modal / List Metadata Compatibility */
   --group-brown: #9a5b3b;
   --group-lightBlue: #38bdf8;
   --group-pink: #ec4899;
@@ -34,24 +56,44 @@
   --radius-lg: 16px;
   --radius-pill: 999px;
 
-  --shadow-panel: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-panel: 0 10px 28px rgba(0, 0, 0, 0.36);
   --shadow-modal: 0 24px 64px rgba(0, 0, 0, 0.65);
-  --shadow-glow: 0 0 24px rgba(124, 77, 255, 0.38);
+  --shadow-glow: 0 0 20px rgba(124, 77, 255, 0.34);
 }
 
 [data-theme='light'] {
-  --bg-main: #eef1f8;
-  --bg-surface: #ffffff;
-  --bg-surface-elevated: #f3f0ff;
-  --bg-board: #f6f7fc;
-  --bg-tile: #ffffff;
-  --bg-tile-hover: #f3efff;
-  --border-subtle: rgba(76, 29, 149, 0.14);
-  --border-strong: rgba(76, 29, 149, 0.28);
+  --bg-main: #e8edf7;
+  --bg-surface: rgba(255, 255, 255, 0.84);
+  --bg-surface-solid: #ffffff;
+  --bg-surface-elevated: rgba(241, 245, 255, 0.88);
+  --bg-board: #dfe6f5;
+  --bg-tile: rgba(255, 255, 255, 0.68);
+  --bg-tile-hover: rgba(255, 255, 255, 0.86);
 
-  --text-primary: #1a1530;
-  --text-secondary: #4e456e;
-  --text-muted: #7c7399;
+  --glass-tile-bg: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.8) 0%,
+    rgba(241, 245, 255, 0.56) 100%
+  );
+  --glass-tile-bg-hover: linear-gradient(
+    155deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(241, 245, 255, 0.76) 100%
+  );
+  --glass-tile-border: rgba(30, 41, 59, 0.14);
+  --glass-tile-border-hover: rgba(109, 40, 217, 0.36);
+  --glass-tile-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.92), 0 3px 10px rgba(15, 23, 42, 0.08);
+  --glass-meta-bg: rgba(15, 23, 42, 0.045);
+  --glass-meta-border: rgba(15, 23, 42, 0.08);
+  --glass-banner-bg: rgba(255, 255, 255, 0.92);
+  --glass-blur: blur(12px);
+
+  --border-subtle: rgba(30, 41, 59, 0.12);
+  --border-strong: rgba(30, 41, 59, 0.22);
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
 
   --accent: #6d28d9;
   --btn-primary: #7c3aed;
@@ -60,7 +102,7 @@
   --btn-success: #059669;
   --btn-warning: #d97706;
 
-  --shadow-panel: 0 8px 24px rgba(30, 20, 60, 0.08);
-  --shadow-modal: 0 24px 60px rgba(24, 16, 52, 0.22);
-  --shadow-glow: 0 0 18px rgba(124, 58, 237, 0.28);
+  --shadow-panel: 0 8px 24px rgba(15, 23, 42, 0.09);
+  --shadow-modal: 0 24px 60px rgba(15, 23, 42, 0.22);
+  --shadow-glow: 0 0 16px rgba(124, 58, 237, 0.24);
 }

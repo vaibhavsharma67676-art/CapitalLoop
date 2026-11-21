@@ -15,16 +15,17 @@ interface TileCenterMetric {
   height: number;
 }
 
-const TOTAL_GRID_UNITS = 11.9; // 1.45 + 9 * 1 + 1.45
+const CORNER_UNITS = 1.42;
+const TOTAL_GRID_UNITS = CORNER_UNITS + 9 + CORNER_UNITS; // 11.84 (matches board.css)
 
 function trackCenterPercent(trackIndexZeroBased: number): number {
   if (trackIndexZeroBased === 0) {
-    return (0.725 / TOTAL_GRID_UNITS) * 100;
+    return (CORNER_UNITS / 2 / TOTAL_GRID_UNITS) * 100;
   }
   if (trackIndexZeroBased === 10) {
-    return (11.175 / TOTAL_GRID_UNITS) * 100;
+    return ((TOTAL_GRID_UNITS - CORNER_UNITS / 2) / TOTAL_GRID_UNITS) * 100;
   }
-  return ((0.95 + trackIndexZeroBased) / TOTAL_GRID_UNITS) * 100;
+  return ((CORNER_UNITS + (trackIndexZeroBased - 0.5)) / TOTAL_GRID_UNITS) * 100;
 }
 
 export function getTileGridCoords(tileId: number): { colIndex: number; rowIndex: number } {

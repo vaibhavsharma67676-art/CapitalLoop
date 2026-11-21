@@ -14,9 +14,9 @@ export interface ThemeConfig {
 
 export const DARK_THEME_PRESET: ThemeConfig = {
   mode: 'dark',
-  mainBg: '#120e1e',
-  surfaceBg: '#1c172e',
-  boardBg: '#171226',
+  mainBg: '#0c0e1a',
+  surfaceBg: '#161a2c',
+  boardBg: '#111526',
   accentColor: '#8b5cf6',
   buttonColor: '#7c4dff',
   groupColors: { ...DEFAULT_GROUP_COLORS },
@@ -24,9 +24,9 @@ export const DARK_THEME_PRESET: ThemeConfig = {
 
 export const LIGHT_THEME_PRESET: ThemeConfig = {
   mode: 'light',
-  mainBg: '#eef1f8',
+  mainBg: '#e8edf7',
   surfaceBg: '#ffffff',
-  boardBg: '#f6f7fc',
+  boardBg: '#dfe6f5',
   accentColor: '#6d28d9',
   buttonColor: '#7c3aed',
   groupColors: { ...DEFAULT_GROUP_COLORS },

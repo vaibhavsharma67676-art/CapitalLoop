@@ -1,12 +1,14 @@
 import type { GameAction, PendingTaxState } from '@capitalloop/shared';
 import { useState } from 'react';
-import { ModalShell } from './ModalShell';
 
 interface TaxModalProps {
   pendingTax: PendingTaxState;
   onAction: (action: GameAction) => Promise<boolean>;
 }
 
+/**
+ * Compact, non-blocking Glassmorphism notification for Income Tax decisions.
+ */
 export function TaxModal({ pendingTax, onAction }: TaxModalProps) {
   const [busy, setBusy] = useState(false);
 
@@ -20,38 +22,37 @@ export function TaxModal({ pendingTax, onAction }: TaxModalProps) {
   };
 
   return (
-    <ModalShell
-      title="Income Tax Assessment"
-      subtitle="Select your preferred tax calculation"
-      dismissible={false}
-    >
-      <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.88rem' }}>
-        You landed on Income Tax. Choose whether to pay the flat rate or 10% of your total net worth:
-      </p>
+    <div className="inline-event-banner event-tax" role="status" aria-live="polite">
+      <div className="inline-event-icon" aria-hidden="true">
+        <span className="event-tax-mark">%</span>
+      </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="inline-event-copy">
+        <div className="inline-event-eyebrow">Income Tax Assessment</div>
+        <div className="inline-event-title">Choose Tax Payment</div>
+        <p className="inline-event-desc">
+          Pay ${pendingTax.flatAmount} flat or 10% net worth (${pendingTax.percentAmount}).
+        </p>
+      </div>
+
+      <div className="inline-event-actions inline-event-actions-row">
         <button
           type="button"
-          className="btn btn-primary btn-lg"
-          style={{ flexDirection: 'column', gap: 4 }}
+          className="btn btn-primary btn-xs"
           disabled={busy}
           onClick={() => void choose('FLAT')}
         >
-          <span style={{ fontSize: '1.25rem' }}>${pendingTax.flatAmount}</span>
-          <span style={{ fontSize: '0.76rem', opacity: 0.9 }}>Flat Tax</span>
+          ${pendingTax.flatAmount} Flat
         </button>
-
         <button
           type="button"
-          className="btn btn-secondary btn-lg"
-          style={{ flexDirection: 'column', gap: 4 }}
+          className="btn btn-secondary btn-xs"
           disabled={busy}
           onClick={() => void choose('PERCENT')}
         >
-          <span style={{ fontSize: '1.25rem' }}>${pendingTax.percentAmount}</span>
-          <span style={{ fontSize: '0.76rem', color: 'var(--text-secondary)' }}>10% Net Worth</span>
+          ${pendingTax.percentAmount} (10%)
         </button>
       </div>
-    </ModalShell>
+    </div>
   );
 }

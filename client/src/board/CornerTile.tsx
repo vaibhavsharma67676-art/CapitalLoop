@@ -30,7 +30,7 @@ export function CornerTile({
       {tile.type === 'START' && (
         <>
           <span className="corner-label">START</span>
-          <span style={{ color: '#bef264', fontWeight: 900, fontSize: '0.95rem', lineHeight: 1 }}>
+          <span className="corner-arrow" aria-hidden="true">
             &raquo;
           </span>
           <span className="corner-sub">+${passStartBonus}</span>
@@ -39,15 +39,15 @@ export function CornerTile({
 
       {tile.type === 'JAIL' && (
         <>
-          <PrisonBarsIcon size={20} />
+          <PrisonBarsIcon size={18} />
           <span className="corner-label">PRISON</span>
-          <span className="corner-sub">Just Visiting</span>
+          <span className="corner-sub">Visiting</span>
         </>
       )}
 
       {tile.type === 'VACATION' && (
         <>
-          <PalmIcon size={20} />
+          <PalmIcon size={18} />
           <span className="corner-label">VACATION</span>
           {vacationPotEnabled ? (
             <span className="corner-vacation-pot">${vacationPot}</span>
@@ -59,7 +59,7 @@ export function CornerTile({
 
       {tile.type === 'GO_TO_JAIL' && (
         <>
-          <span style={{ fontSize: '1.1rem', lineHeight: 1 }} aria-hidden="true">
+          <span className="corner-siren" aria-hidden="true">
             &#x1F6A8;
           </span>
           <span className="corner-label">GO TO</span>
