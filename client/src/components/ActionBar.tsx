@@ -1,5 +1,6 @@
 import {
   getTileById,
+  getTotalAvailableMortgagePayout,
   isPurchasableTile,
   JAIL_BAIL_AMOUNT,
   type ClientGameState,
@@ -31,6 +32,10 @@ export function ActionBar({
   const me = gameState.players[myPlayerId];
   const currentPlayer = gameState.players[currentPlayerId];
 
+  const myPropertyCount = Object.values(gameState.properties).filter(
+    (p) => p.ownerId === myPlayerId,
+  ).length;
+
   const dispatch = async (action: GameAction) => {
     setSubmitting(true);
     try {
@@ -55,7 +60,7 @@ export function ActionBar({
     return (
       <div className="center-action-deck">
         <span style={{ color: 'var(--text-muted)', fontSize: '0.82rem' }}>
-          Spectating private match
+          Spectating match
         </span>
       </div>
     );
@@ -170,7 +175,9 @@ export function ActionBar({
     return (
       <div className="center-action-deck">
         <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 600 }}>
-          Waiting for {currentPlayer?.nickname ?? 'player'}...
+          {currentPlayer?.isBot
+            ? `${currentPlayer.nickname} (AI) is thinking...`
+            : `Waiting for ${currentPlayer?.nickname ?? 'player'}...`}
         </span>
       </div>
     );
@@ -210,6 +217,12 @@ export function ActionBar({
             )}
           </>
         )}
+
+        {gameState.settings.mortgageEnabled && myPropertyCount > 0 && (
+          <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenMortgage}>
+            Mortgages
+          </button>
+        )}
       </div>
     );
   }
@@ -218,6 +231,10 @@ export function ActionBar({
     const tile = getTileById(gameState.settings.mapId, gameState.pendingPurchaseTileId);
     const price = isPurchasableTile(tile) ? tile.price : 0;
     const canAfford = me.cash >= price;
+    const shortfall = Math.max(0, price - me.cash);
+    const availableMortgage = getTotalAvailableMortgagePayout(gameState, myPlayerId);
+    const canOpenMortgageDuringPurchase =
+      gameState.settings.mortgageEnabled && myPropertyCount > 0;
 
     return (
       <div className="center-action-deck">
@@ -226,6 +243,7 @@ export function ActionBar({
           className="btn btn-success"
           disabled={!canAfford || submitting}
           onClick={() => void dispatch({ type: 'BUY_PROPERTY' })}
+          title={canAfford ? `Buy ${tile.name}` : `Need $${shortfall} more cash`}
         >
           {(tile.type === 'STREET' || tile.type === 'TRANSIT') && (
             <CountryFlag code={tile.countryCode} countryName={tile.country} size={16} />
@@ -234,6 +252,23 @@ export function ActionBar({
             Buy {tile.shortLabel} (${price})
           </span>
         </button>
+
+        {!canAfford && canOpenMortgageDuringPurchase && (
+          <button
+            type="button"
+            className="btn btn-warning btn-sm"
+            disabled={submitting}
+            onClick={onOpenMortgage}
+            title={
+              availableMortgage > 0
+                ? `Mortgage owned properties to raise up to $${availableMortgage}`
+                : 'Manage properties or sell buildings to raise cash'
+            }
+          >
+            Mortgage (+${shortfall} needed)
+          </button>
+        )}
+
         <button
           type="button"
           className="btn btn-secondary"
@@ -258,7 +293,7 @@ export function ActionBar({
           <CheckIcon size={16} />
           End Turn
         </button>
-        {gameState.settings.mortgageEnabled && (
+        {gameState.settings.mortgageEnabled && myPropertyCount > 0 && (
           <button type="button" className="btn btn-secondary btn-sm" onClick={onOpenMortgage}>
             Mortgages
           </button>

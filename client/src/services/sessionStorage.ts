@@ -6,6 +6,7 @@ const LAST_ROOM_KEY = 'capitalloop:lastRoom';
 const NICKNAME_KEY = 'capitalloop:nickname';
 const THEME_KEY = 'capitalloop:theme';
 const MUTE_KEY = 'capitalloop:muted';
+const VOLUME_KEY = 'capitalloop:volume';
 
 export function saveRoomCredentials(creds: RoomSessionCredentials): void {
   try {
@@ -100,5 +101,26 @@ export function loadSoundMuted(): boolean {
     return localStorage.getItem(MUTE_KEY) === '1';
   } catch {
     return false;
+  }
+}
+
+export function saveSoundVolume(volume: number): void {
+  try {
+    const clamped = Math.max(0, Math.min(1, Number.isFinite(volume) ? volume : 0.75));
+    localStorage.setItem(VOLUME_KEY, clamped.toFixed(2));
+  } catch {
+    // Ignore
+  }
+}
+
+export function loadSoundVolume(): number {
+  try {
+    const raw = localStorage.getItem(VOLUME_KEY);
+    if (!raw) return 0.75;
+    const parsed = Number.parseFloat(raw);
+    if (!Number.isFinite(parsed)) return 0.75;
+    return Math.max(0, Math.min(1, parsed));
+  } catch {
+    return 0.75;
   }
 }

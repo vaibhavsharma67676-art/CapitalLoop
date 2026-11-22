@@ -5,9 +5,11 @@ import {
   PLAYER_COLOR_PRESETS,
   TOKEN_SHAPES,
   sanitizeGameState,
+  type BotDifficulty,
   type ChatMessage,
   type GameState,
   type LobbyPlayer,
+  type MapId,
   type PartialGameSettings,
   type PrivateRoomSnapshot,
   type RoomSessionCredentials,
@@ -28,6 +30,24 @@ export interface RoomManagerHooks {
   onRoomUpdated?: (roomCode: string, snapshot: PrivateRoomSnapshot) => void;
   onPlayerKicked?: (socketId: string, roomCode: string, reason: string) => void;
 }
+
+export interface PublicMatchSeatInput {
+  nickname: string;
+  clientIp: string;
+  socketId: string;
+  preferredColor?: string;
+  preferredToken?: TokenShapeId;
+}
+
+const DEFAULT_BOT_NAMES: readonly string[] = [
+  'Atlas AI',
+  'Nova AI',
+  'Orion AI',
+  'Vega AI',
+  'Midas AI',
+  'Apex AI',
+  'Titan AI',
+];
 
 export class RoomManager {
   private readonly rooms = new Map<string, ServerRoomRecord>();
@@ -57,14 +77,19 @@ export class RoomManager {
         await this.persistence.deleteRoom(record.roomCode);
         continue;
       }
-      // After a server restart, mark all seats disconnected so clients reconnect with their tokens
+      // After a server restart, mark human seats disconnected so clients reconnect with their tokens
       for (const seat of record.players) {
-        seat.isConnected = false;
-        seat.socketId = null;
+        if (seat.isBot) {
+          seat.isConnected = true;
+          seat.socketId = null;
+        } else {
+          seat.isConnected = false;
+          seat.socketId = null;
+        }
       }
       if (record.gameState) {
         for (const p of Object.values(record.gameState.players)) {
-          p.isConnected = false;
+          p.isConnected = Boolean(p.isBot);
         }
       }
       this.rooms.set(record.roomCode, record);
@@ -91,9 +116,14 @@ export class RoomManager {
 
   /**
    * Intentionally exposes NO room listing method. Only single-code lookup exists.
+   * Private rooms are never discoverable or exposed to public matchmaking.
    */
   getRoomRecord(roomCode: string): ServerRoomRecord | undefined {
     return this.rooms.get(roomCode.toUpperCase());
+  }
+
+  isSocketInRoom(socketId: string): boolean {
+    return this.socketToSeat.has(socketId);
   }
 
   validateInviteCode(roomCode: string): {
@@ -104,6 +134,9 @@ export class RoomManager {
     const room = this.rooms.get(roomCode.toUpperCase());
     if (!room) {
       return { exists: false, joinable: false, reason: 'Room not found.' };
+    }
+    if (room.visibility === 'PUBLIC_MATCH') {
+      return { exists: true, joinable: false, reason: 'This is a closed Quick Match table.' };
     }
     if (room.status !== 'LOBBY') {
       return { exists: true, joinable: false, reason: 'Game is already in progress.' };
@@ -123,6 +156,7 @@ export class RoomManager {
     socketId: string;
     preferredColor?: string;
     preferredToken?: TokenShapeId;
+    bots?: Array<{ difficulty: BotDifficulty; nickname?: string }>;
   }): RoomOperationResult<{ credentials: RoomSessionCredentials; snapshot: PrivateRoomSnapshot }> {
     const existingCodes = new Set(this.rooms.keys());
     const roomCode = generatePrivateRoomCode(existingCodes);
@@ -141,6 +175,8 @@ export class RoomManager {
       isHost: true,
       isReady: true,
       isConnected: true,
+      isBot: false,
+      botDifficulty: null,
       joinedAt: now,
       lastSeenAt: now,
       tokenHash: hashSessionToken(sessionToken),
@@ -151,6 +187,7 @@ export class RoomManager {
     const record: ServerRoomRecord = {
       roomCode,
       status: 'LOBBY',
+      visibility: 'PRIVATE',
       isLocked: false,
       hostId: playerId,
       settings: { ...DEFAULT_GAME_SETTINGS },
@@ -163,7 +200,7 @@ export class RoomManager {
           senderId: 'system',
           senderName: 'System',
           senderColor: '#a78bfa',
-          text: `${hostSeat.nickname} created private room ${roomCode}. Share the invite link with your friends!`,
+          text: `${hostSeat.nickname} created private room ${roomCode}. Share the invite link or add AI bots to begin!`,
           timestamp: now,
           isSystem: true,
         },
@@ -172,6 +209,16 @@ export class RoomManager {
       createdAt: now,
       updatedAt: now,
     };
+
+    if (input.bots && input.bots.length > 0) {
+      const requestedMax = Math.min(8, Math.max(record.settings.maxPlayers, 1 + input.bots.length));
+      record.settings.maxPlayers = requestedMax;
+      for (const botSpec of input.bots) {
+        if (record.players.length >= record.settings.maxPlayers) break;
+        const botSeat = this.buildBotSeat(record, botSpec.difficulty, botSpec.nickname, now);
+        record.players.push(botSeat);
+      }
+    }
 
     this.rooms.set(roomCode, record);
     this.socketToSeat.set(input.socketId, { roomCode, playerId });
@@ -191,6 +238,136 @@ export class RoomManager {
     };
   }
 
+  /**
+   * Creates an isolated public matchmaking table for matched Quick Match players.
+   * Never touches or exposes any PRIVATE room.
+   */
+  createPublicMatchRoom(input: {
+    seats: PublicMatchSeatInput[];
+    mapId: MapId;
+    gameSpeed: 'NORMAL' | 'FAST';
+  }): RoomOperationResult<{
+    roomCode: string;
+    record: ServerRoomRecord;
+    assignments: Array<{ socketId: string; credentials: RoomSessionCredentials }>;
+  }> {
+    if (input.seats.length < MIN_PLAYERS) {
+      return {
+        ok: false,
+        code: 'NOT_ENOUGH_PLAYERS',
+        error: `Need at least ${MIN_PLAYERS} players to form a Quick Match.`,
+      };
+    }
+
+    const existingCodes = new Set(this.rooms.keys());
+    const roomCode = generatePrivateRoomCode(existingCodes);
+    const now = Date.now();
+
+    const players: ServerPlayerSeat[] = [];
+    const assignments: Array<{ socketId: string; credentials: RoomSessionCredentials }> = [];
+    const usedNames = new Set<string>();
+    const usedColors = new Set<string>();
+    const usedTokens = new Set<TokenShapeId>();
+
+    input.seats.forEach((seatInput, idx) => {
+      const playerId = generateSecureId('plr');
+      const sessionToken = generateSessionToken();
+
+      let displayName = seatInput.nickname.trim();
+      if (usedNames.has(displayName.toLowerCase())) {
+        const suffix = ` #${idx + 1}`;
+        displayName = `${displayName.slice(0, 18 - suffix.length)}${suffix}`;
+      }
+      usedNames.add(displayName.toLowerCase());
+
+      const color =
+        seatInput.preferredColor && !usedColors.has(seatInput.preferredColor.toLowerCase())
+          ? seatInput.preferredColor
+          : (PLAYER_COLOR_PRESETS.find((c) => !usedColors.has(c.hex.toLowerCase()))?.hex ??
+            PLAYER_COLOR_PRESETS[idx % PLAYER_COLOR_PRESETS.length]!.hex);
+      usedColors.add(color.toLowerCase());
+
+      const tokenShape =
+        seatInput.preferredToken && !usedTokens.has(seatInput.preferredToken)
+          ? seatInput.preferredToken
+          : (TOKEN_SHAPES.find((t) => !usedTokens.has(t)) ??
+            TOKEN_SHAPES[idx % TOKEN_SHAPES.length]!);
+      usedTokens.add(tokenShape);
+
+      const seat: ServerPlayerSeat = {
+        id: playerId,
+        nickname: displayName,
+        color,
+        tokenShape,
+        isHost: idx === 0,
+        isReady: true,
+        isConnected: true,
+        isBot: false,
+        botDifficulty: null,
+        joinedAt: now,
+        lastSeenAt: now,
+        tokenHash: hashSessionToken(sessionToken),
+        socketId: seatInput.socketId,
+        clientIp: seatInput.clientIp,
+      };
+
+      players.push(seat);
+      assignments.push({
+        socketId: seatInput.socketId,
+        credentials: {
+          roomCode,
+          playerId,
+          sessionToken,
+          invitePath: `/room/${roomCode}`,
+        },
+      });
+    });
+
+    const hostId = players[0]!.id;
+    const record: ServerRoomRecord = {
+      roomCode,
+      status: 'LOBBY',
+      visibility: 'PUBLIC_MATCH',
+      isLocked: true,
+      hostId,
+      settings: {
+        ...DEFAULT_GAME_SETTINGS,
+        mapId: input.mapId,
+        gameSpeed: input.gameSpeed,
+        maxPlayers: players.length,
+        turnTimerSeconds: input.gameSpeed === 'FAST' ? 30 : 60,
+      },
+      players,
+      kickedIps: [],
+      chat: [
+        {
+          id: generateSecureId('msg'),
+          roomCode,
+          senderId: 'system',
+          senderName: 'System',
+          senderColor: '#a78bfa',
+          text: `Quick Match formed with ${players.length} players! Starting match...`,
+          timestamp: now,
+          isSystem: true,
+        },
+      ],
+      gameState: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    this.rooms.set(roomCode, record);
+    for (const assignment of assignments) {
+      this.socketToSeat.set(assignment.socketId, {
+        roomCode,
+        playerId: assignment.credentials.playerId,
+      });
+    }
+    this.persistence.saveRoom(record, true);
+
+    return { ok: true, data: { roomCode, record, assignments } };
+  }
+
   joinPrivateRoom(input: {
     roomCode: string;
     nickname: string;
@@ -203,6 +380,13 @@ export class RoomManager {
     const record = this.rooms.get(code);
     if (!record) {
       return { ok: false, code: 'ROOM_NOT_FOUND', error: 'Private room not found. Check your 5-character code.' };
+    }
+    if (record.visibility === 'PUBLIC_MATCH') {
+      return {
+        ok: false,
+        code: 'ROOM_LOCKED',
+        error: 'This Quick Match table is closed to external joins.',
+      };
     }
     if (record.status !== 'LOBBY') {
       return {
@@ -271,6 +455,8 @@ export class RoomManager {
       isHost: false,
       isReady: false,
       isConnected: true,
+      isBot: false,
+      botDifficulty: null,
       joinedAt: now,
       lastSeenAt: now,
       tokenHash: hashSessionToken(sessionToken),
@@ -296,6 +482,107 @@ export class RoomManager {
         snapshot: this.toSnapshot(record),
       },
     };
+  }
+
+  addBotToRoom(
+    roomCode: string,
+    playerId: string,
+    sessionToken: string,
+    difficulty: BotDifficulty,
+    customNickname?: string,
+  ): RoomOperationResult<{ botId: string; snapshot: PrivateRoomSnapshot }> {
+    const auth = this.authenticateSeat(roomCode, playerId, sessionToken);
+    if (!auth.ok) return auth;
+
+    const { record, seat } = auth.data;
+    if (!seat.isHost) {
+      return { ok: false, code: 'FORBIDDEN', error: 'Only the host can add AI bots.' };
+    }
+    if (record.status !== 'LOBBY') {
+      return { ok: false, code: 'INVALID_PHASE', error: 'Bots can only be added in the lobby.' };
+    }
+    if (record.players.length >= record.settings.maxPlayers) {
+      return {
+        ok: false,
+        code: 'ROOM_FULL',
+        error: `Room is full (${record.settings.maxPlayers}/${record.settings.maxPlayers}). Increase Max Players to add more bots.`,
+      };
+    }
+
+    const now = Date.now();
+    const botSeat = this.buildBotSeat(record, difficulty, customNickname, now);
+    record.players.push(botSeat);
+    record.updatedAt = now;
+    this.appendSystemChat(record, `${botSeat.nickname} (${difficulty} Bot) joined the table.`);
+    this.persistence.saveRoom(record);
+
+    return {
+      ok: true,
+      data: {
+        botId: botSeat.id,
+        snapshot: this.toSnapshot(record),
+      },
+    };
+  }
+
+  removeBotFromRoom(
+    roomCode: string,
+    playerId: string,
+    sessionToken: string,
+    botId: string,
+  ): RoomOperationResult<PrivateRoomSnapshot> {
+    const auth = this.authenticateSeat(roomCode, playerId, sessionToken);
+    if (!auth.ok) return auth;
+
+    const { record, seat } = auth.data;
+    if (!seat.isHost) {
+      return { ok: false, code: 'FORBIDDEN', error: 'Only the host can remove AI bots.' };
+    }
+    if (record.status !== 'LOBBY') {
+      return { ok: false, code: 'INVALID_PHASE', error: 'Bots can only be removed in the lobby.' };
+    }
+
+    const idx = record.players.findIndex((p) => p.id === botId && p.isBot);
+    if (idx === -1) {
+      return { ok: false, code: 'PLAYER_NOT_FOUND', error: 'Bot not found in lobby.' };
+    }
+
+    const [removed] = record.players.splice(idx, 1);
+    record.updatedAt = Date.now();
+    if (removed) {
+      this.appendSystemChat(record, `${removed.nickname} was removed from the table.`);
+    }
+    this.persistence.saveRoom(record);
+    return { ok: true, data: this.toSnapshot(record) };
+  }
+
+  updateBotDifficulty(
+    roomCode: string,
+    playerId: string,
+    sessionToken: string,
+    botId: string,
+    difficulty: BotDifficulty,
+  ): RoomOperationResult<PrivateRoomSnapshot> {
+    const auth = this.authenticateSeat(roomCode, playerId, sessionToken);
+    if (!auth.ok) return auth;
+
+    const { record, seat } = auth.data;
+    if (!seat.isHost) {
+      return { ok: false, code: 'FORBIDDEN', error: 'Only the host can change bot difficulty.' };
+    }
+    if (record.status !== 'LOBBY') {
+      return { ok: false, code: 'INVALID_PHASE', error: 'Bot difficulty can only be edited in the lobby.' };
+    }
+
+    const bot = record.players.find((p) => p.id === botId && p.isBot);
+    if (!bot) {
+      return { ok: false, code: 'PLAYER_NOT_FOUND', error: 'Bot not found in lobby.' };
+    }
+
+    bot.botDifficulty = difficulty;
+    record.updatedAt = Date.now();
+    this.persistence.saveRoom(record);
+    return { ok: true, data: this.toSnapshot(record) };
   }
 
   reconnectSeat(input: {
@@ -350,8 +637,8 @@ export class RoomManager {
       return { ok: false, code: 'ROOM_NOT_FOUND', error: 'Private room no longer exists.' };
     }
     const seat = record.players.find((p) => p.id === playerId);
-    if (!seat) {
-      return { ok: false, code: 'UNAUTHORIZED', error: 'You are not a member of this private room.' };
+    if (!seat || seat.isBot) {
+      return { ok: false, code: 'UNAUTHORIZED', error: 'You are not a member of this room.' };
     }
     if (!verifySessionToken(sessionToken, seat.tokenHash)) {
       return { ok: false, code: 'UNAUTHORIZED', error: 'Invalid session credentials.' };
@@ -510,7 +797,12 @@ export class RoomManager {
     if (removed.socketId) {
       this.socketToSeat.delete(removed.socketId);
     }
-    if (removed.clientIp && removed.clientIp !== 'unknown' && !record.kickedIps.includes(removed.clientIp)) {
+    if (
+      !removed.isBot &&
+      removed.clientIp &&
+      removed.clientIp !== 'unknown' &&
+      !record.kickedIps.includes(removed.clientIp)
+    ) {
       record.kickedIps.push(removed.clientIp);
     }
 
@@ -543,7 +835,8 @@ export class RoomManager {
 
     if (record.status === 'LOBBY') {
       record.players = record.players.filter((p) => p.id !== seat.id);
-      if (record.players.length === 0) {
+      const remainingHumans = record.players.filter((p) => !p.isBot);
+      if (remainingHumans.length === 0) {
         this.deleteRoomInternal(record.roomCode);
         return { ok: true, data: { roomDeleted: true, snapshot: null } };
       }
@@ -558,7 +851,7 @@ export class RoomManager {
       return { ok: true, data: { roomDeleted: false, snapshot: this.toSnapshot(record) } };
     }
 
-    // In-game or finished: preserve seat for secure reconnection unless already finished and everyone left
+    // In-game or finished: preserve seat for secure reconnection
     seat.isConnected = false;
     seat.socketId = null;
     if (record.gameState && record.gameState.players[seat.id]) {
@@ -592,9 +885,11 @@ export class RoomManager {
 
     record.status = 'LOBBY';
     record.gameState = null;
-    record.isLocked = false;
+    if (record.visibility !== 'PUBLIC_MATCH') {
+      record.isLocked = false;
+    }
     for (const p of record.players) {
-      p.isReady = p.isHost;
+      p.isReady = p.isHost || Boolean(p.isBot);
     }
     record.updatedAt = Date.now();
     this.appendSystemChat(record, 'Host returned the room to the lobby for a rematch.');
@@ -667,10 +962,10 @@ export class RoomManager {
       return {
         ok: false,
         code: 'NOT_ENOUGH_PLAYERS',
-        error: `At least ${MIN_PLAYERS} real players must join the private room to start.`,
+        error: `At least ${MIN_PLAYERS} players (friends or AI bots) are required to start.`,
       };
     }
-    const notReady = record.players.filter((p) => !p.isHost && !p.isReady);
+    const notReady = record.players.filter((p) => !p.isHost && !p.isBot && !p.isReady);
     if (notReady.length > 0) {
       return {
         ok: false,
@@ -691,7 +986,7 @@ export class RoomManager {
     if (!record) return null;
 
     const seat = record.players.find((p) => p.id === binding.playerId);
-    if (!seat || seat.socketId !== socketId) return null;
+    if (!seat || seat.isBot || seat.socketId !== socketId) return null;
 
     seat.isConnected = false;
     seat.socketId = null;
@@ -701,7 +996,6 @@ export class RoomManager {
       record.gameState.players[seat.id]!.isConnected = false;
     }
 
-    // Schedule lobby disconnect expiry or host migration
     if (record.status === 'LOBBY') {
       const key = `${record.roomCode}:${seat.id}`;
       this.clearSeatDisconnectTimer(record.roomCode, seat.id);
@@ -731,12 +1025,16 @@ export class RoomManager {
       isHost: seat.isHost,
       isReady: seat.isReady,
       isConnected: seat.isConnected,
+      isBot: Boolean(seat.isBot),
+      botDifficulty: seat.isBot ? (seat.botDifficulty ?? 'MEDIUM') : null,
+      discordId: seat.discordId ?? null,
       joinedAt: seat.joinedAt,
     }));
 
     return {
       roomCode: record.roomCode,
       status: record.status,
+      visibility: record.visibility ?? 'PRIVATE',
       isLocked: record.isLocked,
       hostId: record.hostId,
       settings: { ...record.settings },
@@ -747,15 +1045,58 @@ export class RoomManager {
     };
   }
 
+  private buildBotSeat(
+    record: ServerRoomRecord,
+    difficulty: BotDifficulty,
+    customNickname: string | undefined,
+    now: number,
+  ): ServerPlayerSeat {
+    const usedNames = new Set(record.players.map((p) => p.nickname.toLowerCase()));
+    let nickname = customNickname?.trim() || '';
+    if (!nickname || usedNames.has(nickname.toLowerCase())) {
+      nickname =
+        DEFAULT_BOT_NAMES.find((candidate) => !usedNames.has(candidate.toLowerCase())) ??
+        `Bot ${record.players.filter((p) => p.isBot).length + 1}`;
+    }
+
+    const usedColors = new Set(record.players.map((p) => p.color.toLowerCase()));
+    const color =
+      PLAYER_COLOR_PRESETS.find((c) => !usedColors.has(c.hex.toLowerCase()))?.hex ??
+      PLAYER_COLOR_PRESETS[record.players.length % PLAYER_COLOR_PRESETS.length]!.hex;
+
+    const usedTokens = new Set(record.players.map((p) => p.tokenShape));
+    const tokenShape =
+      TOKEN_SHAPES.find((t) => !usedTokens.has(t)) ??
+      TOKEN_SHAPES[record.players.length % TOKEN_SHAPES.length]!;
+
+    return {
+      id: generateSecureId('bot'),
+      nickname,
+      color,
+      tokenShape,
+      isHost: false,
+      isReady: true,
+      isConnected: true,
+      isBot: true,
+      botDifficulty: difficulty,
+      joinedAt: now,
+      lastSeenAt: now,
+      tokenHash: '',
+      socketId: null,
+      clientIp: 'bot',
+    };
+  }
+
   private evictDisconnectedLobbySeat(roomCode: string, playerId: string): void {
     const record = this.rooms.get(roomCode);
     if (!record || record.status !== 'LOBBY') return;
 
     const seat = record.players.find((p) => p.id === playerId);
-    if (!seat || seat.isConnected) return;
+    if (!seat || seat.isBot || seat.isConnected) return;
 
     record.players = record.players.filter((p) => p.id !== playerId);
-    if (record.players.length === 0) {
+    const remainingHumans = record.players.filter((p) => !p.isBot);
+    if (remainingHumans.length === 0) {
       this.deleteRoomInternal(roomCode);
       return;
     }
@@ -788,9 +1129,11 @@ export class RoomManager {
   }
 
   private promoteNextHost(record: ServerRoomRecord): boolean {
-    const connectedCandidate = record.players.find((p) => p.isConnected && p.id !== record.hostId);
-    const fallbackCandidate = record.players.find((p) => p.id !== record.hostId);
-    const nextHost = connectedCandidate ?? fallbackCandidate;
+    const connectedHuman = record.players.find(
+      (p) => !p.isBot && p.isConnected && p.id !== record.hostId,
+    );
+    const fallbackHuman = record.players.find((p) => !p.isBot && p.id !== record.hostId);
+    const nextHost = connectedHuman ?? fallbackHuman;
     if (!nextHost) return false;
 
     for (const p of record.players) {
@@ -851,10 +1194,10 @@ export class RoomManager {
   private async sweepExpiredRooms(): Promise<void> {
     const now = Date.now();
     for (const [roomCode, record] of this.rooms.entries()) {
-      const hasConnected = record.players.some((p) => p.isConnected);
-      if (!hasConnected && this.isRecordExpired(record, now)) {
+      const hasConnectedHuman = record.players.some((p) => !p.isBot && p.isConnected);
+      if (!hasConnectedHuman && this.isRecordExpired(record, now)) {
         this.deleteRoomInternal(roomCode);
-        this.logger.info('Swept expired private room', { roomCode });
+        this.logger.info('Swept expired room', { roomCode });
       }
     }
   }

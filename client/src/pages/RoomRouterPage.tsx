@@ -1,4 +1,5 @@
 import type { GameSessionController } from '../hooks/useGameSession';
+import type { InfoModalTab } from '../modals/AboutLegalModal';
 import { GameScreen } from '../screens/GameScreen';
 import { HomeScreen } from '../screens/HomeScreen';
 import { LobbyScreen } from '../screens/LobbyScreen';
@@ -7,9 +8,14 @@ import { JoinRedirectPage } from './JoinRedirectPage';
 interface RoomRouterPageProps {
   session: GameSessionController;
   onOpenTheme: () => void;
+  onOpenInfo: (tab?: InfoModalTab) => void;
 }
 
-export function RoomRouterPage({ session, onOpenTheme }: RoomRouterPageProps) {
+export function RoomRouterPage({
+  session,
+  onOpenTheme,
+  onOpenInfo,
+}: RoomRouterPageProps) {
   const { room, credentials } = session;
 
   if (room && credentials) {
@@ -23,10 +29,14 @@ export function RoomRouterPage({ session, onOpenTheme }: RoomRouterPageProps) {
           onUpdateSettings={session.updateSettings}
           onToggleLock={session.toggleLock}
           onKickPlayer={session.kickPlayer}
+          onAddBot={session.addBot}
+          onRemoveBot={session.removeBot}
+          onUpdateBotDifficulty={session.updateBotDifficulty}
           onStartGame={session.startGame}
           onLeaveRoom={session.leaveRoom}
           onSendChat={session.sendChat}
           onOpenTheme={onOpenTheme}
+          onOpenInfo={onOpenInfo}
           onCopied={(label) => session.pushToast('success', label)}
         />
       );
@@ -43,6 +53,7 @@ export function RoomRouterPage({ session, onOpenTheme }: RoomRouterPageProps) {
         onReturnToLobby={session.returnToLobby}
         onLeaveRoom={session.leaveRoom}
         onOpenTheme={onOpenTheme}
+        onOpenInfo={onOpenInfo}
         onCopied={(label) => session.pushToast('success', label)}
       />
     );
@@ -55,6 +66,7 @@ export function RoomRouterPage({ session, onOpenTheme }: RoomRouterPageProps) {
         roomCode={joinMatch[1].toUpperCase()}
         session={session}
         onOpenTheme={onOpenTheme}
+        onOpenInfo={onOpenInfo}
       />
     );
   }
@@ -64,10 +76,17 @@ export function RoomRouterPage({ session, onOpenTheme }: RoomRouterPageProps) {
       isConnected={session.isConnected}
       isBusy={session.isBusy}
       savedReconnectCreds={session.savedReconnectCreds}
+      matchmakingStatus={session.matchmakingStatus}
+      publicConfig={session.publicConfig}
+      discordUser={session.discordUser}
       onCreateRoom={session.createPrivateRoom}
       onJoinRoom={session.joinPrivateRoom}
+      onStartQuickMatch={session.startQuickMatch}
+      onCancelQuickMatch={session.cancelQuickMatch}
       onReconnect={session.reconnectRoom}
+      onDisconnectDiscord={session.disconnectDiscord}
       onOpenTheme={onOpenTheme}
+      onOpenInfo={onOpenInfo}
     />
   );
 }

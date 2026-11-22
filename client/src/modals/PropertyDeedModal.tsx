@@ -1,4 +1,5 @@
 import {
+  canLiquidateInPhase,
   getColorGroupTiles,
   getTileById,
   getUnmortgageCost,
@@ -41,8 +42,15 @@ export function PropertyDeedModal({
   const isMyProp = Boolean(prop && prop.ownerId === myPlayerId);
   const isDebtorRaisingFunds =
     gameState.phase === 'DEBT_RESOLUTION' && gameState.pendingDebt?.debtorId === myPlayerId;
-  const canManageNormal =
+
+  const canBuildNormal =
     isMyTurn && (gameState.phase === 'WAITING_FOR_ROLL' || gameState.phase === 'POST_ROLL_ACTIONS');
+  const canLiquidateNow = canLiquidateInPhase(gameState.phase, isMyTurn, isDebtorRaisingFunds);
+  const canUnmortgagePhase =
+    isMyTurn &&
+    (gameState.phase === 'WAITING_FOR_ROLL' ||
+      gameState.phase === 'AWAITING_BUY_DECISION' ||
+      gameState.phase === 'POST_ROLL_ACTIONS');
 
   const runAction = async (action: GameAction) => {
     setBusy(true);
@@ -94,7 +102,7 @@ export function PropertyDeedModal({
     tile.type === 'STREET' &&
     Boolean(prop && me) &&
     isMyProp &&
-    canManageNormal &&
+    canBuildNormal &&
     ownsFullSet &&
     !groupHasMortgaged &&
     (prop?.houses ?? 0) < HOTEL_LEVEL &&
@@ -105,7 +113,7 @@ export function PropertyDeedModal({
     tile.type === 'STREET' &&
     Boolean(prop) &&
     isMyProp &&
-    (canManageNormal || isDebtorRaisingFunds) &&
+    canLiquidateNow &&
     (prop?.houses ?? 0) > 0 &&
     canSellEvenly;
 
@@ -114,7 +122,7 @@ export function PropertyDeedModal({
     gameState.settings.mortgageEnabled &&
     Boolean(prop) &&
     isMyProp &&
-    (canManageNormal || isDebtorRaisingFunds) &&
+    canLiquidateNow &&
     !prop?.mortgaged &&
     !groupHasBuildings;
 
@@ -127,7 +135,7 @@ export function PropertyDeedModal({
     gameState.settings.mortgageEnabled &&
     Boolean(prop && me) &&
     isMyProp &&
-    canManageNormal &&
+    canUnmortgagePhase &&
     Boolean(prop?.mortgaged) &&
     (me?.cash ?? 0) >= unmortgageCost;
 
@@ -262,7 +270,7 @@ export function PropertyDeedModal({
                 <tr>
                   <td>House / Hotel Cost</td>
                   <td>
-                    ${tile.houseCost} /${tile.hotelCost}
+                    ${tile.houseCost} / ${tile.hotelCost}
                   </td>
                 </tr>
                 <tr>

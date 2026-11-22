@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import path from 'node:path';
 import dotenv from 'dotenv';
 
@@ -23,6 +24,13 @@ export interface ServerConfig {
   idleLobbyTtlMs: number;
   idleGameTtlMs: number;
   finishedRoomTtlMs: number;
+  matchmakingEnabled: boolean;
+  discordClientId: string | null;
+  discordClientSecret: string | null;
+  discordRedirectUri: string | null;
+  discordInviteUrl: string | null;
+  discordWebhookUrl: string | null;
+  discordSessionSecret: string;
   logLevel: LogLevel;
   clientDistPath: string;
 }
@@ -32,6 +40,19 @@ function parseIntEnv(key: string, fallback: number): number {
   if (!raw) return fallback;
   const parsed = Number.parseInt(raw, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function parseBoolEnv(key: string, fallback: boolean): boolean {
+  const raw = process.env[key]?.trim().toLowerCase();
+  if (!raw) return fallback;
+  if (raw === 'true' || raw === '1' || raw === 'yes') return true;
+  if (raw === 'false' || raw === '0' || raw === 'no') return false;
+  return fallback;
+}
+
+function parseOptionalString(key: string): string | null {
+  const raw = process.env[key]?.trim();
+  return raw && raw.length > 0 ? raw : null;
 }
 
 function parseLogLevel(raw: string | undefined): LogLevel {
@@ -45,6 +66,19 @@ export function loadServerConfig(overrides: Partial<ServerConfig> = {}): ServerC
   const envRaw = process.env.NODE_ENV;
   const nodeEnv: ServerConfig['nodeEnv'] =
     envRaw === 'production' || envRaw === 'test' ? envRaw : 'development';
+
+  const discordClientId = parseOptionalString('DISCORD_CLIENT_ID');
+  const discordClientSecret = parseOptionalString('DISCORD_CLIENT_SECRET');
+  const discordRedirectUri = parseOptionalString('DISCORD_REDIRECT_URI');
+  const discordOAuthEnabled = Boolean(discordClientId && discordClientSecret && discordRedirectUri);
+
+  const configuredSessionSecret = parseOptionalString('DISCORD_SESSION_SECRET');
+  if (nodeEnv === 'production' && discordOAuthEnabled && !configuredSessionSecret) {
+    throw new Error(
+      'DISCORD_SESSION_SECRET must be set to a persistent random secret in production when Discord OAuth is enabled.',
+    );
+  }
+  const sessionSecret = configuredSessionSecret ?? crypto.randomBytes(32).toString('hex');
 
   const base: ServerConfig = {
     nodeEnv,
@@ -63,6 +97,13 @@ export function loadServerConfig(overrides: Partial<ServerConfig> = {}): ServerC
     idleLobbyTtlMs: parseIntEnv('IDLE_LOBBY_TTL_MS', 7_200_000),
     idleGameTtlMs: parseIntEnv('IDLE_GAME_TTL_MS', 43_200_000),
     finishedRoomTtlMs: parseIntEnv('FINISHED_ROOM_TTL_MS', 1_800_000),
+    matchmakingEnabled: parseBoolEnv('MATCHMAKING_ENABLED', true),
+    discordClientId: parseOptionalString('DISCORD_CLIENT_ID'),
+    discordClientSecret: parseOptionalString('DISCORD_CLIENT_SECRET'),
+    discordRedirectUri: parseOptionalString('DISCORD_REDIRECT_URI'),
+    discordInviteUrl: parseOptionalString('DISCORD_INVITE_URL'),
+    discordWebhookUrl: parseOptionalString('DISCORD_WEBHOOK_URL'),
+    discordSessionSecret: sessionSecret,
     logLevel: parseLogLevel(process.env.LOG_LEVEL),
     clientDistPath: path.resolve(__dirname, '../../client/dist'),
   };

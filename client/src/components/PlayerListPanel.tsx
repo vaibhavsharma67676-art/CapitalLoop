@@ -1,5 +1,5 @@
 import type { ClientGameState } from '@capitalloop/shared';
-import { CrownIcon } from '../assets/icons';
+import { CrownIcon, RobotIcon } from '../assets/icons';
 import { TokenGlyph } from '../assets/tokenShapes';
 
 interface PlayerListPanelProps {
@@ -59,6 +59,12 @@ export function PlayerListPanel({
                     {player.nickname}
                   </span>
                   {player.id === hostId && <CrownIcon size={12} style={{ color: '#facc15' }} />}
+                  {player.isBot && (
+                    <span className="bot-pill" title={`${player.botDifficulty ?? 'MEDIUM'} AI Bot`}>
+                      <RobotIcon size={10} />
+                      {player.botDifficulty ? player.botDifficulty.slice(0, 3) : 'AI'}
+                    </span>
+                  )}
                   {isMe && (
                     <span style={{ fontSize: '0.68rem', color: 'var(--accent)' }}>(You)</span>
                   )}
@@ -69,7 +75,9 @@ export function PlayerListPanel({
                   ) : (
                     <>
                       {player.inJail && <span style={{ color: '#fbbf24' }}>In Prison</span>}
-                      {!player.isConnected && <span style={{ color: '#f87171' }}>Offline</span>}
+                      {!player.isBot && !player.isConnected && (
+                        <span style={{ color: '#f87171' }}>Offline</span>
+                      )}
                       {player.jailFreeCards > 0 && <span>Card x{player.jailFreeCards}</span>}
                     </>
                   )}

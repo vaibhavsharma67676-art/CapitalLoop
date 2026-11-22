@@ -5,16 +5,53 @@ export interface RngProvider {
   now(): number;
 }
 
+interface CryptoRandomSource {
+  getRandomValues: <T extends ArrayBufferView>(array: T) => T;
+}
+
+function getCryptoSource(): CryptoRandomSource {
+  const candidate = (globalThis as { crypto?: Partial<CryptoRandomSource> }).crypto;
+  if (!candidate || typeof candidate.getRandomValues !== 'function') {
+    throw new Error('Cryptographic RNG (crypto.getRandomValues) is unavailable in this runtime.');
+  }
+  return candidate as CryptoRandomSource;
+}
+
+function unbiasedCryptoInt(minInclusive: number, maxExclusive: number): number {
+  const min = Math.ceil(minInclusive);
+  const max = Math.floor(maxExclusive);
+  const span = max - min;
+  if (span <= 1) {
+    return min;
+  }
+
+  const cryptoSource = getCryptoSource();
+  const maxUint32 = 0x1_0000_0000;
+  if (span > maxUint32) {
+    throw new RangeError('RNG span exceeds 32-bit unsigned integer range.');
+  }
+
+  // Rejection sampling eliminates modulo bias completely
+  const limit = maxUint32 - (maxUint32 % span);
+  const buffer = new Uint32Array(1);
+  let value = 0;
+  do {
+    cryptoSource.getRandomValues(buffer);
+    value = buffer[0]!;
+  } while (value >= limit);
+
+  return min + (value % span);
+}
+
 export function createDefaultRng(): RngProvider {
   let seq = 0;
   return {
     nextInt(minInclusive: number, maxExclusive: number): number {
-      const span = maxExclusive - minInclusive;
-      return minInclusive + Math.floor(Math.random() * span);
+      return unbiasedCryptoInt(minInclusive, maxExclusive);
     },
     nextId(prefix: string): string {
       seq += 1;
-      const rand = Math.random().toString(36).slice(2, 8);
+      const rand = unbiasedCryptoInt(0, 0x7fffffff).toString(36);
       return `${prefix}_${Date.now().toString(36)}_${seq}_${rand}`;
     },
     now(): number {

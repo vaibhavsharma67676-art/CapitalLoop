@@ -1,6 +1,9 @@
 import {
   BOARD_TILE_COUNT,
+  BOT_DIFFICULTIES,
   CHAT_MAX_LENGTH,
+  MAX_PLAYERS_HARD_LIMIT,
+  MIN_PLAYERS,
   NICKNAME_MAX_LENGTH,
   NICKNAME_MIN_LENGTH,
   ROOM_CODE_ALPHABET,
@@ -12,6 +15,7 @@ import { z } from 'zod';
 
 const roomCodeRegex = new RegExp(`^[${ROOM_CODE_ALPHABET}]{${ROOM_CODE_LENGTH}}$`);
 const hexColorRegex = /^#[0-9a-fA-F]{6}$/;
+const controlCharsRegex = /[\u0000-\u001f\u007f]/;
 
 export const roomCodeSchema = z
   .string()
@@ -26,15 +30,23 @@ export const nicknameSchema = z
   .trim()
   .min(NICKNAME_MIN_LENGTH, `Nickname must be at least ${NICKNAME_MIN_LENGTH} characters.`)
   .max(NICKNAME_MAX_LENGTH, `Nickname must be at most ${NICKNAME_MAX_LENGTH} characters.`)
-  .refine((v) => !/[<>]/.test(v), 'Nickname cannot contain < or > characters.');
+  .refine((v) => !/[<>]/.test(v), 'Nickname cannot contain < or > characters.')
+  .refine((v) => !controlCharsRegex.test(v), 'Nickname contains invalid control characters.');
 
 export const tokenShapeSchema = z.enum(TOKEN_SHAPES);
 export const colorHexSchema = z.string().regex(hexColorRegex, 'Invalid hex color.');
+export const botDifficultySchema = z.enum(BOT_DIFFICULTIES);
+
+export const botSeedSchema = z.object({
+  difficulty: botDifficultySchema,
+  nickname: nicknameSchema.optional(),
+});
 
 export const createRoomSchema = z.object({
   nickname: nicknameSchema,
   preferredColor: colorHexSchema.optional(),
   preferredToken: tokenShapeSchema.optional(),
+  bots: z.array(botSeedSchema).max(MAX_PLAYERS_HARD_LIMIT - 1).optional(),
 });
 
 export const joinRoomSchema = z.object({
@@ -65,6 +77,29 @@ export const toggleLockSchema = authEnvelopeSchema.extend({
 
 export const kickPlayerSchema = authEnvelopeSchema.extend({
   targetPlayerId: z.string().min(3).max(64),
+});
+
+export const addBotSchema = authEnvelopeSchema.extend({
+  difficulty: botDifficultySchema,
+  nickname: nicknameSchema.optional(),
+});
+
+export const removeBotSchema = authEnvelopeSchema.extend({
+  botId: z.string().min(3).max(64),
+});
+
+export const updateBotDifficultySchema = authEnvelopeSchema.extend({
+  botId: z.string().min(3).max(64),
+  difficulty: botDifficultySchema,
+});
+
+export const matchmakingJoinSchema = z.object({
+  nickname: nicknameSchema,
+  mapId: z.enum(['classic-metro', 'global-capitals']).default('classic-metro'),
+  gameSpeed: z.enum(['NORMAL', 'FAST']).default('NORMAL'),
+  targetPlayers: z.number().int().min(MIN_PLAYERS).max(4).default(2),
+  preferredColor: colorHexSchema.optional(),
+  preferredToken: tokenShapeSchema.optional(),
 });
 
 export const partialSettingsSchema = z
@@ -128,7 +163,12 @@ export const updateSettingsSchema = authEnvelopeSchema.extend({
 });
 
 export const chatSendSchema = authEnvelopeSchema.extend({
-  text: z.string().trim().min(1, 'Message cannot be empty.').max(CHAT_MAX_LENGTH),
+  text: z
+    .string()
+    .trim()
+    .min(1, 'Message cannot be empty.')
+    .max(CHAT_MAX_LENGTH)
+    .refine((v) => !controlCharsRegex.test(v), 'Message contains invalid control characters.'),
 });
 
 const tileIdSchema = z.number().int().min(0).max(BOARD_TILE_COUNT - 1);

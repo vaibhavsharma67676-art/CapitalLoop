@@ -1,18 +1,23 @@
 import type { ClientToServerEvents, ServerToClientEvents } from '@capitalloop/shared';
 import type { Server, Socket } from 'socket.io';
 import type { GameController } from '../game/gameController';
+import type { MatchmakingManager } from '../rooms/matchmakingManager';
 import type { RoomManager } from '../rooms/roomManager';
 import type { SlidingWindowRateLimiter } from '../security/rateLimiter';
 import {
+  addBotSchema,
   authEnvelopeSchema,
   createRoomSchema,
   joinRoomSchema,
   kickPlayerSchema,
+  removeBotSchema,
   setReadySchema,
   toggleLockSchema,
+  updateBotDifficultySchema,
   updateProfileSchema,
   updateSettingsSchema,
 } from '../security/validators';
+import type { DiscordService } from '../services/discordService';
 
 export function getSocketClientIp(socket: Socket, trustProxy = 0): string {
   if (trustProxy > 0) {
@@ -40,8 +45,20 @@ export function registerRoomSocketHandlers(
   joinRateLimiter: SlidingWindowRateLimiter,
   eventRateLimiter: SlidingWindowRateLimiter,
   trustProxy = 0,
+  matchmakingManager?: MatchmakingManager,
+  discordService?: DiscordService,
 ): void {
   const clientIp = getSocketClientIp(socket, trustProxy);
+
+  const cancelAnyPendingMatchmaking = () => {
+    if (!matchmakingManager) return;
+    const cancelled = matchmakingManager.cancel(socket.id);
+    if (cancelled.updatedStatus) {
+      for (const sid of cancelled.affectedSocketIds) {
+        io.sockets.sockets.get(sid)?.emit('matchmaking:status', cancelled.updatedStatus);
+      }
+    }
+  };
 
   socket.on('room:create', (rawPayload, ack) => {
     if (typeof ack !== 'function') return;
@@ -56,12 +73,15 @@ export function registerRoomSocketHandlers(
       return;
     }
 
+    cancelAnyPendingMatchmaking();
+
     const result = roomManager.createPrivateRoom({
       nickname: parsed.data.nickname,
       clientIp,
       socketId: socket.id,
       preferredColor: parsed.data.preferredColor,
       preferredToken: parsed.data.preferredToken,
+      bots: parsed.data.bots,
     });
 
     if (!result.ok) {
@@ -70,6 +90,8 @@ export function registerRoomSocketHandlers(
     }
 
     void socket.join(result.data.credentials.roomCode);
+    discordService?.notifyRoomCreated(parsed.data.nickname, 'PRIVATE');
+
     ack({
       ok: true,
       data: {
@@ -91,6 +113,8 @@ export function registerRoomSocketHandlers(
       ack({ ok: false, code: 'VALIDATION_ERROR', error: parsed.error.issues[0]?.message ?? 'Invalid room code or nickname.' });
       return;
     }
+
+    cancelAnyPendingMatchmaking();
 
     const result = roomManager.joinPrivateRoom({
       roomCode: parsed.data.roomCode,
@@ -130,6 +154,8 @@ export function registerRoomSocketHandlers(
       ack({ ok: false, code: 'VALIDATION_ERROR', error: 'Invalid session credentials.' });
       return;
     }
+
+    cancelAnyPendingMatchmaking();
 
     const result = roomManager.reconnectSeat({
       roomCode: parsed.data.roomCode,
@@ -330,6 +356,96 @@ export function registerRoomSocketHandlers(
 
     io.to(parsed.data.roomCode).emit('room:state', result.data.snapshot);
     ack({ ok: true, data: { kicked: true } });
+  });
+
+  socket.on('room:addBot', (rawPayload, ack) => {
+    if (typeof ack !== 'function') return;
+    if (!eventRateLimiter.consume(socket.id).allowed) {
+      ack({ ok: false, code: 'RATE_LIMITED', error: 'Slow down.' });
+      return;
+    }
+
+    const parsed = addBotSchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      ack({
+        ok: false,
+        code: 'VALIDATION_ERROR',
+        error: parsed.error.issues[0]?.message ?? 'Invalid bot configuration.',
+      });
+      return;
+    }
+
+    const result = roomManager.addBotToRoom(
+      parsed.data.roomCode,
+      parsed.data.playerId,
+      parsed.data.sessionToken,
+      parsed.data.difficulty,
+      parsed.data.nickname,
+    );
+    if (!result.ok) {
+      ack(result);
+      return;
+    }
+
+    io.to(parsed.data.roomCode).emit('room:state', result.data.snapshot);
+    ack({ ok: true, data: { botId: result.data.botId } });
+  });
+
+  socket.on('room:removeBot', (rawPayload, ack) => {
+    if (typeof ack !== 'function') return;
+    if (!eventRateLimiter.consume(socket.id).allowed) {
+      ack({ ok: false, code: 'RATE_LIMITED', error: 'Slow down.' });
+      return;
+    }
+
+    const parsed = removeBotSchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      ack({ ok: false, code: 'VALIDATION_ERROR', error: 'Invalid remove bot request.' });
+      return;
+    }
+
+    const result = roomManager.removeBotFromRoom(
+      parsed.data.roomCode,
+      parsed.data.playerId,
+      parsed.data.sessionToken,
+      parsed.data.botId,
+    );
+    if (!result.ok) {
+      ack(result);
+      return;
+    }
+
+    io.to(parsed.data.roomCode).emit('room:state', result.data);
+    ack({ ok: true, data: { removed: true } });
+  });
+
+  socket.on('room:updateBotDifficulty', (rawPayload, ack) => {
+    if (typeof ack !== 'function') return;
+    if (!eventRateLimiter.consume(socket.id).allowed) {
+      ack({ ok: false, code: 'RATE_LIMITED', error: 'Slow down.' });
+      return;
+    }
+
+    const parsed = updateBotDifficultySchema.safeParse(rawPayload);
+    if (!parsed.success) {
+      ack({ ok: false, code: 'VALIDATION_ERROR', error: 'Invalid bot difficulty request.' });
+      return;
+    }
+
+    const result = roomManager.updateBotDifficulty(
+      parsed.data.roomCode,
+      parsed.data.playerId,
+      parsed.data.sessionToken,
+      parsed.data.botId,
+      parsed.data.difficulty,
+    );
+    if (!result.ok) {
+      ack(result);
+      return;
+    }
+
+    io.to(parsed.data.roomCode).emit('room:state', result.data);
+    ack({ ok: true, data: { updated: true } });
   });
 
   socket.on('room:startGame', (rawPayload, ack) => {

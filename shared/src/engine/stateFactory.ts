@@ -16,6 +16,7 @@ import type {
   PlayerGameState,
   PropertyState,
 } from '../types/game';
+import type { BotDifficulty } from '../types/room';
 import type { GameSettings } from '../types/settings';
 import { createDefaultRng, type RngProvider, shuffleArray } from './rng';
 
@@ -25,6 +26,8 @@ export interface InitialPlayerSeed {
   color: string;
   tokenShape: TokenShapeId;
   isConnected: boolean;
+  isBot?: boolean;
+  botDifficulty?: BotDifficulty | null;
 }
 
 export interface CreateGameStateInput {
@@ -91,6 +94,8 @@ export function createInitialGameState(input: CreateGameStateInput): GameState {
       isBankrupt: false,
       bankruptOrder: null,
       isConnected: seed.isConnected,
+      isBot: Boolean(seed.isBot),
+      botDifficulty: seed.isBot ? (seed.botDifficulty ?? 'MEDIUM') : null,
       stats: {
         rentCollected: 0,
         rentPaid: 0,

@@ -24,7 +24,7 @@ import {
   validatePayJailBail,
   validateUseJailCard,
 } from '../rules/jailRules';
-import { validateMortgage, validateUnmortgage } from '../rules/mortgageRules';
+import { canLiquidateInPhase, validateMortgage, validateUnmortgage } from '../rules/mortgageRules';
 import { calculateRent, type RentCalculationOverrides } from '../rules/rentRules';
 import { resolveTaxAssessment } from '../rules/taxRules';
 import {
@@ -657,6 +657,16 @@ function handleRollDice(
 
   const die1 = rng.nextInt(1, 7);
   const die2 = rng.nextInt(1, 7);
+  if (
+    !Number.isInteger(die1) ||
+    !Number.isInteger(die2) ||
+    die1 < 1 ||
+    die1 > 6 ||
+    die2 < 1 ||
+    die2 > 6
+  ) {
+    return fail('RULE_VIOLATION', 'Invalid server dice generation result.');
+  }
   const roll: DiceRollResult = {
     die1,
     die2,
@@ -987,13 +997,11 @@ export function applyGameAction(
     case 'SELL_HOUSE': {
       const isDebtorRaisingFunds =
         state.phase === 'DEBT_RESOLUTION' && state.pendingDebt?.debtorId === actorId;
-      if (!isDebtorRaisingFunds) {
-        if (!isCurrentTurn) {
+      if (!canLiquidateInPhase(state.phase, isCurrentTurn, isDebtorRaisingFunds)) {
+        if (!isDebtorRaisingFunds && !isCurrentTurn) {
           return fail('NOT_YOUR_TURN', 'You can only sell buildings on your turn or to pay debt.');
         }
-        if (state.phase !== 'WAITING_FOR_ROLL' && state.phase !== 'POST_ROLL_ACTIONS') {
-          return fail('INVALID_PHASE', 'Cannot sell buildings right now.');
-        }
+        return fail('INVALID_PHASE', 'Cannot sell buildings right now.');
       }
 
       const check = validateSellHouse(state, actorId, action.tileId);
@@ -1037,13 +1045,11 @@ export function applyGameAction(
     case 'MORTGAGE_PROPERTY': {
       const isDebtorRaisingFunds =
         state.phase === 'DEBT_RESOLUTION' && state.pendingDebt?.debtorId === actorId;
-      if (!isDebtorRaisingFunds) {
-        if (!isCurrentTurn) {
+      if (!canLiquidateInPhase(state.phase, isCurrentTurn, isDebtorRaisingFunds)) {
+        if (!isDebtorRaisingFunds && !isCurrentTurn) {
           return fail('NOT_YOUR_TURN', 'You can only mortgage on your turn or to settle debt.');
         }
-        if (state.phase !== 'WAITING_FOR_ROLL' && state.phase !== 'POST_ROLL_ACTIONS') {
-          return fail('INVALID_PHASE', 'Cannot mortgage right now.');
-        }
+        return fail('INVALID_PHASE', 'Cannot mortgage right now.');
       }
 
       const check = validateMortgage(state, actorId, action.tileId);
@@ -1081,7 +1087,11 @@ export function applyGameAction(
       if (!isCurrentTurn) {
         return fail('NOT_YOUR_TURN', 'You can only unmortgage on your own turn.');
       }
-      if (state.phase !== 'WAITING_FOR_ROLL' && state.phase !== 'POST_ROLL_ACTIONS') {
+      if (
+        state.phase !== 'WAITING_FOR_ROLL' &&
+        state.phase !== 'AWAITING_BUY_DECISION' &&
+        state.phase !== 'POST_ROLL_ACTIONS'
+      ) {
         return fail('INVALID_PHASE', 'Cannot unmortgage right now.');
       }
 

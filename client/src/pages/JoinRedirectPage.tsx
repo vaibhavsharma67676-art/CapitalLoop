@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import type { GameSessionController } from '../hooks/useGameSession';
+import type { InfoModalTab } from '../modals/AboutLegalModal';
 import { HomeScreen } from '../screens/HomeScreen';
 
 interface JoinRedirectPageProps {
   roomCode: string;
   session: GameSessionController;
   onOpenTheme: () => void;
+  onOpenInfo: (tab?: InfoModalTab) => void;
 }
 
 export function JoinRedirectPage({
   roomCode,
   session,
   onOpenTheme,
+  onOpenInfo,
 }: JoinRedirectPageProps) {
   const [inviteNote, setInviteNote] = useState<string | null>(null);
 
@@ -45,10 +48,17 @@ export function JoinRedirectPage({
       isConnected={session.isConnected}
       isBusy={session.isBusy}
       savedReconnectCreds={session.savedReconnectCreds}
+      matchmakingStatus={session.matchmakingStatus}
+      publicConfig={session.publicConfig}
+      discordUser={session.discordUser}
       onCreateRoom={session.createPrivateRoom}
       onJoinRoom={session.joinPrivateRoom}
+      onStartQuickMatch={session.startQuickMatch}
+      onCancelQuickMatch={session.cancelQuickMatch}
       onReconnect={session.reconnectRoom}
+      onDisconnectDiscord={session.disconnectDiscord}
       onOpenTheme={onOpenTheme}
+      onOpenInfo={onOpenInfo}
     />
   );
 }

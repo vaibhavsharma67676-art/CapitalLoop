@@ -10,18 +10,20 @@ import { CountryFlag } from '../assets/countryFlags';
 import {
   CheckIcon,
   CopyIcon,
+  InfoIcon,
   PaletteIcon,
   SettingsIcon,
   TradeArrowsIcon,
-  VolumeIcon,
 } from '../assets/icons';
 import { GameBoard } from '../board/GameBoard';
 import { ActionBar } from '../components/ActionBar';
 import { ActivityLog } from '../components/ActivityLog';
+import { AudioControlPopover } from '../components/AudioControlPopover';
 import { ChatPanel } from '../components/ChatPanel';
 import { PlayerListPanel } from '../components/PlayerListPanel';
 import { SettingsPanel } from '../components/SettingsPanel';
 import { useCountdownSeconds } from '../hooks/useTurnTimer';
+import type { InfoModalTab } from '../modals/AboutLegalModal';
 import { AuctionModal } from '../modals/AuctionModal';
 import { BankruptcyModal } from '../modals/BankruptcyModal';
 import { CardDrawModal } from '../modals/CardDrawModal';
@@ -32,7 +34,6 @@ import { MortgageModal } from '../modals/MortgageModal';
 import { PropertyDeedModal } from '../modals/PropertyDeedModal';
 import { TaxModal } from '../modals/TaxModal';
 import { TradeModal } from '../modals/TradeModal';
-import { soundService } from '../services/soundService';
 import type { ActiveModalState, MobileDrawerTab } from '../types/ui';
 
 interface GameScreenProps {
@@ -45,6 +46,7 @@ interface GameScreenProps {
   onReturnToLobby: () => Promise<void>;
   onLeaveRoom: () => Promise<void>;
   onOpenTheme: () => void;
+  onOpenInfo: (tab?: InfoModalTab) => void;
   onCopied: (label: string) => void;
 }
 
@@ -58,12 +60,12 @@ export function GameScreen({
   onReturnToLobby,
   onLeaveRoom,
   onOpenTheme,
+  onOpenInfo,
   onCopied,
 }: GameScreenProps) {
   const [modal, setModal] = useState<ActiveModalState>({ kind: 'NONE' });
   const [mobileTab, setMobileTab] = useState<MobileDrawerTab>('board');
   const [mobileZoomed, setMobileZoomed] = useState<boolean>(false);
-  const [muted, setMuted] = useState<boolean>(() => soundService.isMuted());
   const [copied, setCopied] = useState(false);
   const [dismissedJailTurn, setDismissedJailTurn] = useState<number>(-1);
 
@@ -148,7 +150,6 @@ export function GameScreen({
     );
   }
 
-  // Banner already carries the Resolve / Tax buttons, so skip duplicating them in ActionBar / mobile dock
   const bannerHandlesPhaseAction = isCardBannerActive || isMyTaxBannerActive;
 
   return (
@@ -201,14 +202,7 @@ export function GameScreen({
                 <TradeArrowsIcon size={13} />
               </button>
             )}
-          <button
-            type="button"
-            className="icon-btn mobile-hud-icon-btn"
-            onClick={() => setMuted(soundService.toggleMute())}
-            aria-label={muted ? 'Unmute sound' : 'Mute sound'}
-          >
-            <VolumeIcon muted={muted} size={13} />
-          </button>
+          <AudioControlPopover compact />
           <button
             type="button"
             className="icon-btn mobile-hud-icon-btn"
@@ -239,32 +233,37 @@ export function GameScreen({
             CAPITAL<span>LOOP</span>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button type="button" className="icon-btn" title="Theme Customizer" onClick={onOpenTheme}>
-              <PaletteIcon size={15} />
-            </button>
             <button
               type="button"
               className="icon-btn"
-              title={muted ? 'Unmute Sound' : 'Mute Sound'}
-              onClick={() => setMuted(soundService.toggleMute())}
+              title="About & Rules"
+              onClick={() => onOpenInfo('rules')}
             >
-              <VolumeIcon muted={muted} size={15} />
+              <InfoIcon size={15} />
             </button>
+            <button type="button" className="icon-btn" title="Theme Customizer" onClick={onOpenTheme}>
+              <PaletteIcon size={15} />
+            </button>
+            <AudioControlPopover />
           </div>
         </div>
 
         <div className="panel-card" style={{ padding: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem' }}>
-            <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>Share this game</span>
+            <span style={{ color: 'var(--text-secondary)', fontWeight: 700 }}>
+              {room.visibility === 'PUBLIC_MATCH' ? 'Quick Match' : 'Share this game'}
+            </span>
             <span className="badge-pill">{room.roomCode}</span>
           </div>
-          <div className="invite-url-row">
-            <span className="invite-url-text">{inviteUrl}</span>
-            <button type="button" className="btn btn-secondary btn-xs" onClick={() => void copyInvite()}>
-              {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
-              {copied ? 'Copied' : 'Copy'}
-            </button>
-          </div>
+          {room.visibility !== 'PUBLIC_MATCH' && (
+            <div className="invite-url-row">
+              <span className="invite-url-text">{inviteUrl}</span>
+              <button type="button" className="btn btn-secondary btn-xs" onClick={() => void copyInvite()}>
+                {copied ? <CheckIcon size={12} /> : <CopyIcon size={12} />}
+                {copied ? 'Copied' : 'Copy'}
+              </button>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               type="button"
@@ -297,7 +296,7 @@ export function GameScreen({
         )}
       </aside>
 
-      {/* CENTER STAGE: Square Clockwise Monopoly Board */}
+      {/* CENTER STAGE: Protected Existing Monopoly Board */}
       <main className={`game-board-stage ${mobileTab === 'board' ? '' : 'mobile-hidden'}`}>
         <GameBoard
           gameState={gameState}
@@ -312,14 +311,14 @@ export function GameScreen({
         />
       </main>
 
-      {/* MOBILE NON-BLOCKING EVENT NOTIFICATION SLOT (visible on <= 860px when event is active) */}
+      {/* MOBILE NON-BLOCKING EVENT NOTIFICATION SLOT */}
       {mobileTab === 'board' && activeEventBanner && (
         <div className="mobile-event-slot" aria-live="polite">
           {activeEventBanner}
         </div>
       )}
 
-      {/* MOBILE THUMB-FRIENDLY ACTION DOCK (hidden when Card/Tax banner already renders the action) */}
+      {/* MOBILE THUMB-FRIENDLY ACTION DOCK */}
       {mobileTab === 'board' && !bannerHandlesPhaseAction && (
         <div className="panel-card mobile-action-dock">
           <ActionBar
@@ -470,7 +469,7 @@ export function GameScreen({
         ))}
       </nav>
 
-      {/* ESSENTIAL INTERACTIVE MODALS (Auctions, Debt Liquidation, Game Over, User-Opened Dialogs) */}
+      {/* ESSENTIAL INTERACTIVE MODALS */}
       {gameState.phase === 'AUCTION_ACTIVE' && gameState.activeAuction && (
         <AuctionModal
           auction={gameState.activeAuction}
@@ -554,7 +553,7 @@ export function GameScreen({
       {modal.kind === 'SETTINGS_VIEW' && (
         <ModalShell
           title="Active Room Settings"
-          subtitle={`Private Room ${room.roomCode}`}
+          subtitle={`Room ${room.roomCode}`}
           wide
           onClose={() => setModal({ kind: 'NONE' })}
         >
