@@ -1,48 +1,53 @@
-# CapitalLoop — Private Multiplayer Monopoly-Style Board Game
+# CAPITALLOOP — Multiplayer Monopoly-Style Board Game
 
-A complete, server-authoritative, browser-based multiplayer Monopoly-style web game built with **React, TypeScript, Vite, Node.js, Express, and Socket.IO**.
+**© 2026 Vaibhav Kumar Sharma. All rights reserved.**
 
-Designed exclusively for **private invite-only games with friends** — zero public rooms, zero random matchmaking, and zero bots.
+A full-stack, server-authoritative multiplayer Monopoly-style browser game built with **React, TypeScript, Vite, Node.js, Express, and Socket.IO**. Engineered for mobile portrait phones, tablets, and desktop browsers while keeping the board layout, tiles, rules, and maps faithful to CapitalLoop.
 
-## Key Features
+---
 
-- **Strict Private Room System**: Unique 5-character room codes, shareable `/join/:code` invite links, host room lock/unlock, player removal, ready checks, and SHA-256 session-token reconnection.
-- **Complete Authoritative Monopoly Engine**: Two dice, clockwise 40-tile movement, doubles extra turn & 3-doubles-to-Prison, property buying, open timed auctions, color-set 2x rent, houses & hotels with even-building and bank supply rules, mortgages with configurable interest, player-to-player trades with counteroffers, Prison escape mechanics, Income/Luxury taxes, Vacation cash pot, Surprise & Treasury card decks, debt liquidation, bankruptcy transfers, and winner rankings.
-- **Every Host Setting Works**: 20 real server-enforced rules including map selection (`Classic Metro` & `Global Capitals`), starting cash, Start bonus, turn timer, tax calculation mode, auctions, trading, mortgages, game speed, and house rules.
-- **Richup-Inspired Responsive UI**: Dark violet default theme + Light mode + live custom color editor (board, UI, accent, buttons, and all 8 property groups), Top-Left `START >>` clockwise board, 3D dice animation, live center activity log, room chat, and mobile portrait/landscape support.
+## Playing Modes & Features
 
-## Quick Start (Local Development)
+1. **Play With Friends (Private Rooms)**
+   - Create invite-only rooms with unique 5-character codes and `/join/:code` invite URLs.
+   - Host room lock/unlock, player kick controls, ready checks, room chat, and SHA-256 session-token reconnection.
+2. **Play With Random Players (Quick Match)**
+   - Optional public matchmaking queue (`MATCHMAKING_ENABLED=true`) matching players by map, game speed, and player count.
+   - Live search status, instant cancel, disconnect cleanup, duplicate-assignment protection, and strict isolation from private rooms.
+3. **Play With Bots (`Easy`, `Medium`, `Hard`, `Expert`)**
+   - Add bots before or inside the lobby, change bot difficulty, or mix human players and AI bots in the same match.
+   - Bots follow identical rules, cannot access hidden information or alter dice, and handle buying, auctions, building, mortgaging, debt liquidation, and trades fairly.
+4. **Fair Cryptographic Dice**
+   - Every dice roll (`1`–`6` per die) is generated and validated on the server using Node.js `crypto.randomInt`.
+5. **Advanced Mortgage System (Including Mid-Purchase)**
+   - Mortgage eligible properties on your turn—including during `AWAITING_BUY_DECISION` when short on cash—to raise funds and complete the property purchase in the same turn.
+6. **Audio & Optional Discord Integration**
+   - Synthesized game sound effects with master volume slider, mute toggle, and mobile autoplay unlock.
+   - Optional Discord OAuth2 account linking, Discord community link, and game webhook notifications (disabled cleanly when env vars are unset).
+
+---
+
+## Local Development, Typecheck, Tests & Build
 
 ```bash
-# 1. Install all workspace dependencies
 npm install
-
-# 2. Copy environment configuration
-cp .env.example .env
-
-# 3. Start shared watcher, Express/Socket.IO server (port 4000), and Vite client (port 5173)
-npm run dev
-```
-
-Open `http://localhost:5173` in two browser tabs (or share over LAN) to create a private room and play.
-
-## Build, Typecheck & Automated Tests
-
-```bash
-# Run all engine & private-room security tests
-npm test
-
-# Strict TypeScript check across shared, server, and client
 npm run typecheck
-
-# Production build (compiles shared, server, and client/dist)
+npm test
 npm run build
-
-# Start production server serving both SPA & WebSockets on PORT (default 4000)
 npm start
 ```
 
-## Documentation
+---
 
-- [Architecture & Security Model](docs/ARCHITECTURE.md)
-- [Linux VPS & Docker HTTPS Deployment Guide](docs/DEPLOYMENT.md)
+## Railway Deployment Guide
+
+1. Push the repository to GitHub and create a new service in **Railway** (uses root `Dockerfile` automatically).
+2. Configure environment variables in Railway (see `.env.example` — never commit real secrets):
+   - `NODE_ENV=production`
+   - `HOST=0.0.0.0`
+   - `TRUST_PROXY=1`
+   - `CLIENT_ORIGIN=https://<your-railway-domain>.up.railway.app`
+   - `MATCHMAKING_ENABLED=true`
+   - Optional Discord variables: `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET`, `DISCORD_REDIRECT_URI`, `DISCORD_INVITE_URL`, `DISCORD_WEBHOOK_URL`, `DISCORD_SESSION_SECRET`
+3. Optionally attach a persistent Railway Volume mounted at `/app/data` (`DATA_DIR=./data` / `/app/data`) for room persistence across restarts.
+
