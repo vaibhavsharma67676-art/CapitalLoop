@@ -1,5 +1,6 @@
 import type { TokenShapeId } from '../constants/tokens';
 import type { DrawnCardState } from './cards';
+import type { BotDifficulty } from './room';
 import type { GameSettings } from './settings';
 
 export type GamePhase =
@@ -42,6 +43,8 @@ export interface PlayerGameState {
   isBankrupt: boolean;
   bankruptOrder: number | null;
   isConnected: boolean;
+  isBot?: boolean;
+  botDifficulty?: BotDifficulty | null;
   stats: PlayerStats;
 }
 
@@ -150,6 +153,7 @@ export interface PlayerRanking {
   netWorth: number;
   cash: number;
   isBankrupt: boolean;
+  isBot?: boolean;
   propertiesOwned: number;
 }
 

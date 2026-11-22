@@ -2,7 +2,14 @@ import type { TokenShapeId } from '../constants/tokens';
 import type { GameAction } from './actions';
 import type { GameDomainEvent } from './events';
 import type { ClientGameState } from './game';
-import type { ChatMessage, PrivateRoomSnapshot, RoomSessionCredentials } from './room';
+import type {
+  BotDifficulty,
+  ChatMessage,
+  MatchmakingPreferences,
+  MatchmakingStatusPayload,
+  PrivateRoomSnapshot,
+  RoomSessionCredentials,
+} from './room';
 import type { PartialGameSettings } from './settings';
 
 export type SocketAck<T = Record<string, never>> =
@@ -13,6 +20,7 @@ export interface CreateRoomPayload {
   nickname: string;
   preferredColor?: string;
   preferredToken?: TokenShapeId;
+  bots?: Array<{ difficulty: BotDifficulty; nickname?: string }>;
 }
 
 export interface JoinRoomPayload {
@@ -81,6 +89,18 @@ export interface ClientToServerEvents {
     payload: AuthEnvelope & { targetPlayerId: string },
     ack: (res: SocketAck<{ kicked: true }>) => void,
   ) => void;
+  'room:addBot': (
+    payload: AuthEnvelope & { difficulty: BotDifficulty; nickname?: string },
+    ack: (res: SocketAck<{ botId: string }>) => void,
+  ) => void;
+  'room:removeBot': (
+    payload: AuthEnvelope & { botId: string },
+    ack: (res: SocketAck<{ removed: true }>) => void,
+  ) => void;
+  'room:updateBotDifficulty': (
+    payload: AuthEnvelope & { botId: string; difficulty: BotDifficulty },
+    ack: (res: SocketAck<{ updated: true }>) => void,
+  ) => void;
   'room:startGame': (
     payload: AuthEnvelope,
     ack: (res: SocketAck<{ started: true }>) => void,
@@ -88,6 +108,13 @@ export interface ClientToServerEvents {
   'room:returnToLobby': (
     payload: AuthEnvelope,
     ack: (res: SocketAck<{ returned: true }>) => void,
+  ) => void;
+  'matchmaking:join': (
+    payload: MatchmakingPreferences,
+    ack: (res: SocketAck<MatchmakingStatusPayload>) => void,
+  ) => void;
+  'matchmaking:cancel': (
+    ack: (res: SocketAck<{ cancelled: true }>) => void,
   ) => void;
   'game:action': (
     payload: AuthEnvelope & { action: GameAction },
@@ -109,4 +136,6 @@ export interface ServerToClientEvents {
   'chat:message': (message: ChatMessage) => void;
   'room:kicked': (payload: { roomCode: string; reason: string }) => void;
   'room:error': (payload: { code: string; error: string }) => void;
+  'matchmaking:status': (status: MatchmakingStatusPayload) => void;
+  'matchmaking:matched': (payload: RoomJoinedResponse) => void;
 }
